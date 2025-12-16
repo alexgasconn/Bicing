@@ -1,0 +1,316 @@
+import React, { useMemo, useState, useEffect } from 'react';
+import { Station } from '../types';
+import { X, BarChart3, TrendingUp, AlertTriangle, Activity, Database, BatteryCharging, Ban, CheckCircle, Download, Trash2, FileSpreadsheet, Save } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid, ScatterChart, Scatter, ZAxis, PieChart, Pie, Legend } from 'recharts';
+import { downloadCSV, getSnapshotCount, clearDatabase } from '../services/db';
+
+interface StatsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  stations: Station[];
+  onForceSave: () => void;
+}
+
+const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, stations, onForceSave }) => {
+  const [activeTab, setActiveTab] = useState<'bikes' | 'slots'>('bikes');
+  const [recordCount, setRecordCount] = useState<number>(0);
+  
+  // Refresh DB count when modal opens
+  useEffect(() => {
+      if (isOpen) {
+          getSnapshotCount().then(setRecordCount);
+      }
+  }, [isOpen]);
+
+  const handleClearDB = async () => {
+      if (confirm("Segur que vols esborrar l'historial?")) {
+          await clearDatabase();
+          setRecordCount(0);
+      }
+  };
+
+  const handleManualSave = () => {
+      onForceSave();
+      // Wait a bit for DB to update then refresh count
+      setTimeout(() => {
+          getSnapshotCount().then(setRecordCount);
+      }, 500);
+  };
+
+  if (!isOpen) return null;
+
+  const stats = useMemo(() => {
+    // 1. Availability Histogram
+    const availabilityBins = [
+      { name: 'Buides (0)', count: 0, color: '#94a3b8' },
+      { name: 'Crític (1-5)', count: 0, color: '#ef4444' },
+      { name: 'Mig (6-15)', count: 0, color: '#eab308' },
+      { name: 'Alt (15+)', count: 0, color: '#22c55e' },
+    ];
+
+    let totalBikes = 0;
+    let totalEbikes = 0;
+    let totalSlots = 0;
+    let activeStations = 0;
+    let emptyStationsCount = 0;
+    let fullStationsCount = 0; // 0 slots
+    
+    // Scatter data: Capacity vs Free Bikes
+    const scatterData = [] as any[];
+
+    stations.forEach(s => {
+      const bikes = s.free_bikes;
+      const slots = s.empty_slots;
+      totalBikes += bikes;
+      totalEbikes += (s.extra?.ebikes || 0);
+      totalSlots += slots;
+
+      if (s.extra?.online !== false) activeStations++;
+      if (bikes === 0) emptyStationsCount++;
+      if (slots === 0) fullStationsCount++;
+
+      if (bikes === 0) availabilityBins[0].count++;
+      else if (bikes <= 5) availabilityBins[1].count++;
+      else if (bikes <= 15) availabilityBins[2].count++;
+      else availabilityBins[3].count++;
+
+      // Downsample for scatter to avoid performance hit if many stations
+      if (Math.random() > 0.5) {
+          scatterData.push({
+              x: bikes + s.empty_slots, // Capacity
+              y: bikes, // Free bikes
+              name: s.name
+          });
+      }
+    });
+
+    const totalMechanical = Math.max(0, totalBikes - totalEbikes);
+    const occupancyRate = (totalBikes / (totalBikes + totalSlots)) * 100;
+
+    // Status Pie Data
+    const statusData = [
+        { name: 'Operatives', value: stations.length - emptyStationsCount - fullStationsCount, color: '#22c55e' },
+        { name: 'Totalment Buides', value: emptyStationsCount, color: '#94a3b8' },
+        { name: 'Totalment Plenes (No Parking)', value: fullStationsCount, color: '#ef4444' }
+    ];
+
+    // 2. Rankings
+    const sortedByBikes = [...stations].sort((a, b) => b.free_bikes - a.free_bikes);
+    const top5Bikes = sortedByBikes.slice(0, 5).map(s => ({ name: s.name.split('-')[1]?.trim() || s.name, value: s.free_bikes }));
+
+    const sortedBySlots = [...stations].sort((a, b) => b.empty_slots - a.empty_slots);
+    const top5Slots = sortedBySlots.slice(0, 5).map(s => ({ name: s.name.split('-')[1]?.trim() || s.name, value: s.empty_slots }));
+    
+    return { availabilityBins, totalBikes, totalEbikes, totalMechanical, top5Bikes, top5Slots, scatterData, occupancyRate, statusData, emptyStationsCount, fullStationsCount };
+  }, [stations]);
+
+  return (
+    <div className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto flex flex-col">
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 border-b border-slate-100 sticky top-0 bg-white z-10">
+          <div>
+            <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">
+              <BarChart3 className="text-blue-600" /> Estadístiques de la Xarxa
+            </h2>
+            <p className="text-slate-500 text-sm">Anàlisi detallada de {stations.length} estacions</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+            <X size={24} className="text-slate-500" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-8">
+          
+          {/* Data Persistence Section (The "Mini BBDD") */}
+          <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
+               <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-4">
+                   <div>
+                       <h3 className="font-bold text-lg flex items-center gap-2">
+                           <Database className="text-emerald-400" /> Base de Dades Històrica (CSV)
+                       </h3>
+                       <p className="text-slate-400 text-sm mt-1">
+                           L'aplicació guarda automàticament una "foto" de l'estat de totes les estacions cada hora.
+                           Actualment tens <span className="font-bold text-white">{recordCount} registres</span> temporals guardats.
+                       </p>
+                   </div>
+                   <div className="flex gap-2">
+                       <button 
+                         onClick={handleManualSave}
+                         className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-bold transition-all active:scale-95 text-xs"
+                         title="Guardar estat actual manualment"
+                       >
+                           <Save size={16} /> Capturar Ara
+                       </button>
+                       <button 
+                         onClick={downloadCSV}
+                         className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold transition-all active:scale-95"
+                       >
+                           <FileSpreadsheet size={18} /> Baixar CSV
+                       </button>
+                       <button 
+                         onClick={handleClearDB}
+                         className="flex items-center gap-2 bg-slate-800 hover:bg-red-900 text-slate-300 px-3 py-2 rounded-lg font-bold transition-all text-xs"
+                         title="Esborrar dades"
+                       >
+                           <Trash2 size={16} />
+                       </button>
+                   </div>
+               </div>
+               {/* Decorative background element */}
+               <Database className="absolute -right-6 -bottom-6 text-slate-800 opacity-50" size={140} />
+          </div>
+
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+             <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="text-slate-500 font-bold mb-1 text-xs uppercase flex items-center gap-1"><Database size={12}/> Total Flota</div>
+                <div className="text-2xl font-black text-slate-900">{stats.totalBikes}</div>
+             </div>
+             <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                <div className="text-blue-800 font-bold mb-1 text-xs uppercase flex items-center gap-1"><BatteryCharging size={12}/> Elèctriques</div>
+                <div className="text-2xl font-black text-blue-900">{stats.totalEbikes}</div>
+                <div className="text-[10px] text-blue-600 font-bold">{((stats.totalEbikes/stats.totalBikes)*100).toFixed(0)}% del total</div>
+             </div>
+             <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                <div className="text-indigo-800 font-bold mb-1 text-xs uppercase flex items-center gap-1"><Activity size={12}/> Ocupació Mitjana</div>
+                <div className="text-2xl font-black text-indigo-900">{stats.occupancyRate.toFixed(0)}%</div>
+                <div className="text-[10px] text-indigo-600 font-bold">de capacitat usada</div>
+             </div>
+             <div className="p-4 bg-red-50 rounded-xl border border-red-100">
+                 <div className="text-red-800 font-bold mb-1 text-xs uppercase flex items-center gap-1"><Ban size={12}/> Sense Parking</div>
+                 <div className="text-2xl font-black text-red-900">{stats.fullStationsCount}</div>
+                 <div className="text-[10px] text-red-600 font-bold">estacions plenes</div>
+             </div>
+             <div className="p-4 bg-gray-100 rounded-xl border border-gray-200">
+                 <div className="text-gray-600 font-bold mb-1 text-xs uppercase flex items-center gap-1"><Ban size={12}/> Sense Bicis</div>
+                 <div className="text-2xl font-black text-gray-800">{stats.emptyStationsCount}</div>
+                 <div className="text-[10px] text-gray-500 font-bold">estacions buides</div>
+             </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            {/* Status Breakdown Pie */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <h3 className="font-bold text-slate-700 mb-6 flex items-center gap-2">
+                    <CheckCircle size={18} className="text-green-500" /> Estat de les Estacions
+                </h3>
+                <div className="h-64 flex items-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie
+                                data={stats.statusData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={60}
+                                outerRadius={80}
+                                paddingAngle={5}
+                                dataKey="value"
+                            >
+                                {stats.statusData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                            </Pie>
+                            <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
+                            <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" />
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+
+            {/* Availability Histogram */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+               <h3 className="font-bold text-slate-700 mb-6 flex items-center gap-2">
+                 <AlertTriangle size={18} className="text-amber-500" /> Distribució de Disponibilitat
+               </h3>
+               <div className="h-64">
+                 <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stats.availabilityBins}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis fontSize={12} tickLine={false} axisLine={false} />
+                      <Tooltip 
+                        cursor={{fill: 'rgba(0,0,0,0.05)'}}
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
+                      />
+                      <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                        {stats.availabilityBins.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                 </ResponsiveContainer>
+               </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Top Stations List */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
+               <div className="flex justify-between items-center mb-6">
+                   <h3 className="font-bold text-slate-700 flex items-center gap-2">
+                     <TrendingUp size={18} className="text-purple-500" /> Rànquing Estacions
+                   </h3>
+                   <div className="flex bg-slate-100 rounded-lg p-1">
+                       <button 
+                         onClick={() => setActiveTab('bikes')}
+                         className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${activeTab === 'bikes' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}
+                       >
+                         Més Bicis
+                       </button>
+                       <button 
+                         onClick={() => setActiveTab('slots')}
+                         className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${activeTab === 'slots' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}
+                       >
+                         Més Aparcament
+                       </button>
+                   </div>
+               </div>
+               
+               <div className="space-y-3 flex-1">
+                  {(activeTab === 'bikes' ? stats.top5Bikes : stats.top5Slots).map((st, i) => (
+                      <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                              <span className="w-6 h-6 flex items-center justify-center bg-slate-200 text-slate-600 font-bold text-xs rounded-full">
+                                  {i + 1}
+                              </span>
+                              <span className="text-sm font-medium text-slate-700 truncate max-w-[200px]">{st.name}</span>
+                          </div>
+                          <span className={`text-sm font-black ${activeTab === 'bikes' ? 'text-blue-600' : 'text-slate-600'}`}>
+                              {st.value} {activeTab === 'bikes' ? 'bicis' : 'llocs'}
+                          </span>
+                      </div>
+                  ))}
+               </div>
+            </div>
+
+            {/* Scatter Plot */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <h3 className="font-bold text-slate-700 mb-6 flex items-center gap-2">
+                    <Activity size={18} className="text-indigo-500" /> Capacitat vs. Ús Real
+                </h3>
+                <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                    <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" dataKey="x" name="Capacitat" unit=" slots" fontSize={10} />
+                        <YAxis type="number" dataKey="y" name="Bicis" unit=" ut." fontSize={10} />
+                        <ZAxis type="number" range={[50, 50]} />
+                        <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ borderRadius: '8px' }} />
+                        <Scatter name="Estacions" data={stats.scatterData} fill="#8884d8" opacity={0.6} />
+                    </ScatterChart>
+                    </ResponsiveContainer>
+                </div>
+                <p className="text-xs text-slate-400 mt-2 text-center">Mostra aleatòria del 50% d'estacions.</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default StatsModal;

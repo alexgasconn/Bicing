@@ -1,0 +1,54 @@
+MANUAL D'USUARI - BICING AI BARCELONA
+=======================================
+
+1. INTRODUCCIÓ
+---------------------------------------
+Benvingut a BicingAI. Aquesta eina està dissenyada per ajudar-te a trobar bicicletes i planificar la teva ruta assegurant-te que tindràs on aparcar.
+
+2. NOVETAT: RADAR DE TRAJECTE
+---------------------------------------
+El botó amb icona de "pols" (Activity) a la part superior dreta obre el Radar.
+Aquesta eina resol el problema etern: "Tinc bici aquí, però tindré lloc allà?"
+
+* Ús:
+    1. Prem el botó del Radar.
+    2. Prem "Origen" i toca el mapa on ets.
+    3. Prem "Destí" i toca el mapa on vas.
+* Resultat:
+    L'aplicació creuarà les dades i et dirà:
+    - 🟢 VERD: Tot ok. Agafa la bici.
+    - 🟡 GROC: Risc alt (queden poques bicis o pocs llocs).
+    - 🔴 VERMELL: Impossible fer la ruta directa (o no hi ha bici o no hi ha pàrquing).
+
+3. INTERFÍCIE PRINCIPAL (DASHBOARD)
+---------------------------------------
+A la part superior trobaràs el tauler de control principal.
+
+* Resum Ràpid: Bicis totals a la ciutat. Fes clic per desplegar detalls (elèctriques vs mecàniques).
+* Botó "Ubica'm": Centra el mapa a la teva posició GPS.
+* Botó "Estadístiques": Obre gràfiques detallades sobre la salut de la xarxa.
+
+4. EL MAPA I MARCADORS
+---------------------------------------
+* Cercles (Donuts):
+    - Blau: Proporció de bicis elèctriques.
+    - Vermell: Proporció de bicis mecàniques.
+    - Gris: Espais buits.
+    - Vora Groga: Estació preferida.
+
+5. FILTRES
+---------------------------------------
+* Barra inferior (Ràpida):
+    - [Bicis]: Amaga estacions buides.
+    - [Elèctriques]: Només mostra on hi hagi elèctriques.
+    - [Parking]: Només mostra on hi hagi forats.
+* Botó "Més" (Avançats):
+    - Et permet filtrar per radi (distància des de tu) i quantitats exactes.
+
+6. FAQs
+---------------------------------------
+P: Les dades són reals?
+R: Sí, provenen de l'API oficial de CityBikes i s'actualitzen cada minut.
+
+P: El radar té en compte si algú aparca mentre vaig cap allà?
+R: No, el radar et dóna la "foto" actual. Si el trajecte és llarg, l'estat del destí pot canviar.

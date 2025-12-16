@@ -1,0 +1,7 @@
+{
+  "name": "BicingAI Barcelona",
+  "description": "Explora el estado de las estaciones de Bicing en Barcelona con la ayuda de inteligencia artificial. Visualiza disponibilidad en tiempo real y pregunta al asistente para encontrar tu bici ideal.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
