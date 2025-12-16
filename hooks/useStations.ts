@@ -17,7 +17,7 @@ export const useStations = (refreshIntervalMs: number = 60000) => {
     } catch (err) {
       console.error("Failed to load stations", err);
       setError(err instanceof Error ? err : new Error('Unknown error'));
-    } else {
+    } finally {
       setLoading(false);
     }
   }, []);
