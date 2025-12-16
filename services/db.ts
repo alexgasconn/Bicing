@@ -4,7 +4,7 @@ const DB_NAME = 'BicingHistoryDB';
 const STORE_NAME = 'hourly_snapshots';
 const DB_VERSION = 1;
 
-interface Snapshot {
+export interface Snapshot {
   id?: number;
   timestamp: number;
   stations: Station[];
@@ -68,6 +68,28 @@ export const getSnapshotCount = async (): Promise<number> => {
         });
     } catch (e) {
         return 0;
+    }
+};
+
+// Get recent history (for UI visualization)
+export const getHistory = async (limit: number = 50): Promise<Snapshot[]> => {
+    try {
+        const db = await openDB();
+        return new Promise((resolve) => {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            // Get all keys, then get the last 'limit' items
+            // Note: IndexedDB is not great for reverse ordering without a cursor, 
+            // but for this dataset size getAll is fine.
+            const req = store.getAll();
+            req.onsuccess = () => {
+                const all = req.result as Snapshot[];
+                // Return reversed (newest first)
+                resolve(all.reverse().slice(0, limit));
+            };
+        });
+    } catch (e) {
+        return [];
     }
 };
 
