@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Station } from '../types';
-import { X, BarChart3, TrendingUp, AlertTriangle, Activity, Database, ServerOff, Signal, ChevronLeft, ScatterChart as ScatterIcon, LineChart } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid, ScatterChart, Scatter, PieChart, Pie, Legend, Line, AreaChart, Area } from 'recharts';
+import { X, TrendingUp, Activity, Database, Signal, ChevronLeft, ScatterChart as ScatterIcon, LineChart, Download, Trash2 } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid, ScatterChart, Scatter, PieChart, Pie, Legend } from 'recharts';
 import { downloadCSV, getSnapshotCount, clearDatabase, getHistory, Snapshot } from '../services/db';
 
 interface StatsModalProps {
@@ -133,13 +133,37 @@ const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, stations, onFo
         {/* Header */}
         <div className="flex justify-between items-center p-4 md:p-6 border-b border-slate-100 bg-white z-10 shrink-0 safe-area-top">
           <div className="flex flex-col gap-1 w-full">
-            <div className="flex items-center gap-2">
-                 <button onClick={onClose} className="md:hidden p-1 -ml-2 text-slate-500">
-                     <ChevronLeft size={24} />
-                 </button>
-                 <h2 className="text-xl md:text-2xl font-black text-slate-800 flex items-center gap-2">
-                    <Database className="text-blue-600" /> Estadístiques Globals
-                </h2>
+            <div className="flex items-center justify-between gap-2">
+                 <div className="flex items-center gap-2">
+                    <button onClick={onClose} className="md:hidden p-1 -ml-2 text-slate-500">
+                        <ChevronLeft size={24} />
+                    </button>
+                    <h2 className="text-xl md:text-2xl font-black text-slate-800 flex items-center gap-2">
+                        <Database className="text-blue-600" /> Estadístiques
+                    </h2>
+                 </div>
+                 
+                 {/* ACTION BUTTONS */}
+                 <div className="flex items-center gap-2">
+                     <button 
+                        onClick={downloadCSV}
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-lg flex items-center gap-2 text-xs font-bold transition-colors"
+                        title="Descarregar CSV"
+                     >
+                        <Download size={16} /> 
+                        <span className="hidden md:inline">CSV</span>
+                     </button>
+                     <button 
+                        onClick={handleClearDB}
+                        className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-lg flex items-center gap-2 text-xs font-bold transition-colors"
+                        title="Esborrar Històric"
+                     >
+                        <Trash2 size={16} />
+                     </button>
+                     <button onClick={onClose} className="hidden md:block p-2 hover:bg-slate-100 rounded-full transition-colors">
+                        <X size={24} className="text-slate-500" />
+                    </button>
+                 </div>
             </div>
             
             <div className="flex gap-4 mt-2">
@@ -157,9 +181,6 @@ const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, stations, onFo
                  </button>
             </div>
           </div>
-          <button onClick={onClose} className="hidden md:block p-2 hover:bg-slate-100 rounded-full transition-colors self-start">
-            <X size={24} className="text-slate-500" />
-          </button>
         </div>
 
         {/* Content */}
