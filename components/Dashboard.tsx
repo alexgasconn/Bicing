@@ -73,14 +73,14 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   // Compact Header View (Mobile Friendly)
   return (
-    <div className="absolute top-0 left-0 right-0 p-3 md:p-4 z-[1000] pointer-events-none flex flex-col items-start gap-3">
+    <div className="absolute top-0 left-0 right-0 p-2 md:p-4 z-[1000] pointer-events-none flex flex-col items-center md:items-start gap-2 md:gap-3">
         
         {/* Main Status Bar - Floating & Flexible */}
-        <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-lg border border-white/50 pointer-events-auto flex flex-col w-full md:w-[320px] transition-all overflow-hidden">
+        <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-lg border border-white/50 pointer-events-auto flex flex-col w-[98%] md:w-[320px] transition-all overflow-hidden ring-1 ring-black/5">
             
-            <div className="flex items-center justify-between p-3" onClick={() => setIsExpanded(!isExpanded)}>
+            <div className="flex items-center justify-between p-3 active:bg-slate-50 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-700 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-red-200 shadow-lg">
+                  <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-700 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-red-200 shadow-lg shrink-0">
                     BCN
                   </div>
                   <div>
@@ -92,14 +92,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </p>
                   </div>
                </div>
-               <button className="text-slate-400 p-1">
+               <button className="text-slate-400 p-2 -mr-2">
                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                </button>
             </div>
 
             {/* Expanded Details */}
             {isExpanded && (
-                <div className="border-t border-slate-100 bg-slate-50 p-3 space-y-3">
+                <div className="border-t border-slate-100 bg-slate-50 p-3 space-y-3 animate-in slide-in-from-top-2 duration-200">
                     <div className="flex items-center gap-4 h-24">
                          <div className="flex-1 h-full relative">
                             <ResponsiveContainer width="100%" height="100%">
@@ -135,14 +135,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                     <div className="grid grid-cols-2 gap-2">
                         <button 
                             onClick={onLocateUser}
-                            className={`py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm ${userLocation ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 border border-slate-200'}`}
+                            className={`py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm ${userLocation ? 'bg-blue-600 text-white active:bg-blue-700' : 'bg-white text-slate-700 border border-slate-200 active:bg-slate-50'}`}
                         >
                             {userLocation ? <Navigation size={14} className="animate-pulse" /> : <Crosshair size={14} />}
                             {userLocation ? 'Ubica\'m' : 'Localitzar'}
                         </button>
                         <button 
                             onClick={onOpenStats}
-                            className="py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 flex items-center justify-center gap-2"
+                            className="py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 flex items-center justify-center gap-2 active:bg-slate-50"
                         >
                             <BarChart3 size={14} /> Estadístiques
                         </button>
@@ -153,9 +153,9 @@ const Dashboard: React.FC<DashboardProps> = ({
 
         {/* Nearest Stations Mini-List (Only if located) */}
         {userLocation && nearestStations.length > 0 && (
-             <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 pointer-events-auto flex flex-col w-full md:w-[320px] overflow-hidden animate-in slide-in-from-left-4 fade-in">
+             <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-white/50 pointer-events-auto flex flex-col w-[98%] md:w-[320px] overflow-hidden animate-in slide-in-from-left-4 fade-in max-h-[40vh]">
                 <div 
-                    className="p-2.5 px-3 bg-blue-50/80 border-b border-blue-100 flex items-center justify-between cursor-pointer"
+                    className="p-3 bg-blue-50/80 border-b border-blue-100 flex items-center justify-between cursor-pointer active:bg-blue-100"
                     onClick={() => setIsNearExpanded(!isNearExpanded)}
                 >
                     <span className="text-xs font-bold text-blue-800 flex items-center gap-1.5">
@@ -165,13 +165,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
                 
                 {isNearExpanded && (
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-slate-100 overflow-y-auto">
                         {nearestStations.map(st => {
                            const ebikes = st.extra?.ebikes || 0;
                             return (
                                <div 
                                    key={st.id} 
-                                   className="p-2.5 hover:bg-slate-50 cursor-pointer active:bg-slate-100"
+                                   className="p-3 hover:bg-slate-50 cursor-pointer active:bg-slate-100"
                                    onClick={() => onCenterStation && onCenterStation(st.latitude, st.longitude)}
                                >
                                    <div className="flex justify-between items-start">

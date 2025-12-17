@@ -180,6 +180,10 @@ const isValidLatLng = (coords: any): boolean => {
            typeof coords[1] === 'number' && !isNaN(coords[1]);
 }
 
+const isValidCoordinate = (val: any): boolean => {
+    return typeof val === 'number' && !isNaN(val);
+}
+
 interface StationMapProps {
   stations: Station[];
   viewState: MapViewState;
@@ -273,7 +277,7 @@ const LayerController: React.FC<{
     if (viewMode === 'stations') {
         // Individual Mode
         const vis = stations.filter(s => {
-            if (!s || isNaN(s.latitude) || isNaN(s.longitude)) return false;
+            if (!s || !isValidCoordinate(s.latitude) || !isValidCoordinate(s.longitude)) return false;
             if (!paddedBounds) return true;
             try { return paddedBounds.contains([s.latitude, s.longitude]); } catch(e) { return false; }
         });
@@ -288,7 +292,7 @@ const LayerController: React.FC<{
         const groups: Record<string, { latSum: number, lngSum: number, count: number, s: Station[] }> = {};
 
         stations.forEach(s => {
-            if (!s || isNaN(s.latitude) || isNaN(s.longitude)) return;
+            if (!s || !isValidCoordinate(s.latitude) || !isValidCoordinate(s.longitude)) return;
             // Key based on grid cell
             const gridX = Math.floor(s.latitude / gridSize);
             const gridY = Math.floor(s.longitude / gridSize);
@@ -304,8 +308,11 @@ const LayerController: React.FC<{
         });
 
         const zoneClusters: ZoneCluster[] = Object.entries(groups).map(([key, group]) => {
+            if (group.count === 0) return null;
             const centerLat = group.latSum / group.count;
             const centerLng = group.lngSum / group.count;
+            
+            if (!isValidCoordinate(centerLat) || !isValidCoordinate(centerLng)) return null;
 
             let tBikes = 0, tEbikes = 0, tMech = 0, tSlots = 0;
             group.s.forEach(st => {
@@ -325,7 +332,7 @@ const LayerController: React.FC<{
                 totalMechanical: tMech,
                 totalSlots: tSlots
             };
-        });
+        }).filter(Boolean) as ZoneCluster[];
 
         return { visibleStations: [], clusters: zoneClusters };
     }
@@ -351,7 +358,7 @@ const LayerController: React.FC<{
 
       {/* Stations Layer */}
       {viewMode === 'stations' && visibleStations.map((station) => {
-        if (isNaN(station.latitude) || isNaN(station.longitude)) return null;
+        if (!isValidCoordinate(station.latitude) || !isValidCoordinate(station.longitude)) return null;
 
         const ebikes = station.extra?.ebikes || 0;
         const mechanical = Math.max(0, station.free_bikes - ebikes);
@@ -491,6 +498,7 @@ const StationMap: React.FC<StationMapProps> = ({
       minZoom={11}
       maxZoom={18}
       maxBounds={[[41.3, 2.0], [41.5, 2.3]]}
+      preferCanvas={true}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
@@ -522,10 +530,10 @@ const StationMap: React.FC<StationMapProps> = ({
         />
       )}
 
-      {radarOrigin && (
+      {radarOrigin && isValidCoordinate(radarOrigin.lat) && isValidCoordinate(radarOrigin.lng) && (
         <Marker position={[radarOrigin.lat, radarOrigin.lng]} icon={getRadarIcon('origin')} />
       )}
-      {radarDestination && (
+      {radarDestination && isValidCoordinate(radarDestination.lat) && isValidCoordinate(radarDestination.lng) && (
         <Marker position={[radarDestination.lat, radarDestination.lng]} icon={getRadarIcon('destination')} />
       )}
 

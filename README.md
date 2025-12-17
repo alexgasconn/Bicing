@@ -14,24 +14,26 @@ La joia de la corona. Planifica el teu viatge amb intel·ligència:
 *   El sistema analitza en temps real si tens **bicis a l'origen** I **lloc per aparcar al destí**.
 *   Et calcula la distància, el temps estimat i t'avisa amb un semàfor (Verd/Groc/Vermell) si la ruta és viable ara mateix.
 
-### 🗺️ Visualització Avançada
-*   **Mapa Interactiu:** Renderitzat fluid amb marcadors tipus "donut" que mostren el balanç elèctric/mecànic.
-*   **Favorits:** Marca les estacions clau per tenir-les controlades.
-*   **Optimització Mòbil:** Disseny compacte "thumb-friendly".
+### 📈 Analítica i Predicció Avançada
+*   **Predicció a 3 Hores:** Algoritme local que projecta la disponibilitat futura basant-se en l'històric.
+*   **Patrons de 30 minuts:** Analitza quan s'omple o es buida cada estació amb precisió de mitja hora.
+*   **Històric Local:** Utilitza IndexedDB per guardar dades al teu navegador i aprendre dels patrons de la ciutat sense necessitat de servidors externs.
 
-### 📊 Dades i Estadístiques
+### 🗺️ Visualització Optimitzada
+*   **Mapa d'Alt Rendiment:** Renderitzat amb Canvas per gestionar centenars de marcadors sense alentir el dispositiu.
+*   **Marcadors Informatius:** Gràfics tipus "donut" que mostren el balanç elèctric/mecànic d'un cop d'ull.
+*   **Disseny Mòbil:** Interfície compacte pensada per ser utilitzada amb una sola mà al carrer.
+
+### 📊 Dades i Estadístiques Globals
 *   **Dashboard Flotant:** Resum en temps real de la flota total i espais lliures.
-*   **Anàlisi Profunda:** Histogrames de disponibilitat i rànquings d'estacions (Top Bicis / Top Aparcament).
-
-### 🔍 Filtres Potents
-*   **Cerca per Radi:** Defineix un cercle al voltant teu (ex. 500m) i ignora la resta de la ciutat.
-*   **Tipus de Bici:** Filtra només elèctriques si tens pressa o mecàniques si vols fer esport.
+*   **Anàlisi de Xarxa:** Histogrames de disponibilitat, rànquings d'estacions (Top Bicis / Top Aparcament) i salut del servei.
 
 ## 🛠️ Stack Tecnològic
 
 *   **Core:** React 19 + TypeScript + Vite.
 *   **Estat:** Custom React Hooks per a gestió eficient de dades.
-*   **Mapes:** Leaflet + React-Leaflet.
+*   **Mapes:** Leaflet + React-Leaflet (amb optimització `preferCanvas`).
+*   **Dades:** IndexedDB per a l'emmagatzematge persistents d'històric.
 *   **Estils:** Tailwind CSS.
 *   **Gràfics:** Recharts.
 

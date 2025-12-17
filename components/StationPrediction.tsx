@@ -52,14 +52,14 @@ const StationPrediction: React.FC<StationPredictionProps> = ({ station }) => {
     }
 
     const trend = data[data.length - 1].bikes - data[0].bikes;
-    const trendText = trend > 2 ? "Tendència a pujar" : trend < -2 ? "Tendència a baixar" : "Estable";
+    const trendText = trend > 2 ? "Pujarà" : trend < -2 ? "Baixarà" : "Estable";
     const trendColor = trend > 2 ? "text-green-600" : trend < -2 ? "text-red-600" : "text-slate-600";
 
     return (
         <div className="mt-3 bg-slate-50 rounded-xl p-3 border border-slate-100">
             <div className="flex justify-between items-center mb-2">
                 <h4 className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                    <TrendingUp size={12} /> Previsió (1h)
+                    <TrendingUp size={12} /> Previsió (3h)
                 </h4>
                 <span className={`text-[10px] font-bold ${trendColor}`}>{trendText}</span>
             </div>
@@ -79,7 +79,7 @@ const StationPrediction: React.FC<StationPredictionProps> = ({ station }) => {
                             fontSize={10} 
                             tickLine={false} 
                             axisLine={false} 
-                            interval="preserveStartEnd"
+                            interval={3} // Show fewer ticks for 3h range
                         />
                         <YAxis 
                             fontSize={10} 

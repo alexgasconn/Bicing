@@ -26,15 +26,22 @@ A la part superior trobaràs el tauler de control principal.
 
 * Resum Ràpid: Bicis totals a la ciutat. Fes clic per desplegar detalls (elèctriques vs mecàniques).
 * Botó "Ubica'm": Centra el mapa a la teva posició GPS.
-* Botó "Estadístiques": Obre gràfiques detallades sobre la salut de la xarxa.
+* Botó "Estadístiques": Obre gràfiques detallades sobre la salut de la xarxa global.
 
-4. EL MAPA I MARCADORS
+4. EL MAPA I DETALLS D'ESTACIÓ
 ---------------------------------------
 * Cercles (Donuts):
     - Blau: Proporció de bicis elèctriques.
     - Vermell: Proporció de bicis mecàniques.
     - Gris: Espais buits.
-    - Vora Groga: Estació preferida.
+
+* Al fer clic en una estació (Popup):
+    1. **Estat Actual:** Bicis i espais en temps real.
+    2. **Predicció Intel·ligent (3h):** Una gràfica mostra la tendència prevista per a les pròximes 3 hores. El sistema aprèn del passat per dir-te si l'estació s'està omplint o buidant.
+    3. **Botó "Veure Històric i Patrons":** Obre un panell avançat amb:
+        - Evolución temporal de les últimes 24h.
+        - Patrons d'ús detallats en franges de 30 minuts (ideal per saber a quina hora exacta sol haver-hi bici).
+    4. **Avisa'm (Sniper):** Si l'estació està buida/plena, pots demanar que t'avisi quan canviï l'estat.
 
 5. FILTRES
 ---------------------------------------
@@ -49,6 +56,9 @@ A la part superior trobaràs el tauler de control principal.
 ---------------------------------------
 P: Les dades són reals?
 R: Sí, provenen de l'API oficial de CityBikes i s'actualitzen cada minut.
+
+P: Com funciona la predicció?
+R: L'aplicació guarda un històric local al teu navegador. Compara el dia de la setmana i l'hora actual amb dades passades per estimar la tendència.
 
 P: El radar té en compte si algú aparca mentre vaig cap allà?
 R: No, el radar et dóna la "foto" actual. Si el trajecte és llarg, l'estat del destí pot canviar.
