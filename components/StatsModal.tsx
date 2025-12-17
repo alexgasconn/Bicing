@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Station } from '../types';
-import { X, BarChart3, TrendingUp, AlertTriangle, Activity, Database, BatteryCharging, Ban, CheckCircle, Download, Trash2, FileSpreadsheet, Save, Table, Clock, ServerOff, Signal, ChevronLeft } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid, ScatterChart, Scatter, ZAxis, PieChart, Pie, Legend } from 'recharts';
+import { X, BarChart3, TrendingUp, AlertTriangle, Activity, Database, ServerOff, Signal, ChevronLeft, ScatterChart as ScatterIcon, LineChart } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid, ScatterChart, Scatter, PieChart, Pie, Legend, Line, AreaChart, Area } from 'recharts';
 import { downloadCSV, getSnapshotCount, clearDatabase, getHistory, Snapshot } from '../services/db';
 
 interface StatsModalProps {
@@ -17,7 +17,6 @@ const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, stations, onFo
   const [recordCount, setRecordCount] = useState<number>(0);
   const [history, setHistory] = useState<Snapshot[]>([]);
   
-  // Refresh DB count and history when modal opens
   useEffect(() => {
       if (isOpen) {
           refreshData();
@@ -36,15 +35,6 @@ const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, stations, onFo
       }
   };
 
-  const handleManualSave = () => {
-      onForceSave();
-      setTimeout(() => {
-          refreshData();
-      }, 500);
-  };
-
-  if (!isOpen) return null;
-
   const stats = useMemo(() => {
     // 1. Availability Histogram
     const availabilityBins = [
@@ -59,7 +49,6 @@ const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, stations, onFo
     let totalSlots = 0;
     let activeStations = 0;
     let offlineStationsCount = 0;
-    let emptyStationsCount = 0;
     let fullStationsCount = 0; 
     
     // Scatter data: Capacity vs Free Bikes
@@ -79,35 +68,32 @@ const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, stations, onFo
           offlineStationsCount++;
       }
 
-      if (bikes === 0) emptyStationsCount++;
-      if (slots === 0) fullStationsCount++;
-
       if (bikes === 0) availabilityBins[0].count++;
       else if (bikes <= 5) availabilityBins[1].count++;
       else if (bikes <= 15) availabilityBins[2].count++;
       else availabilityBins[3].count++;
 
-      // Downsample for scatter
-      if (Math.random() > 0.5) {
+      if (slots === 0) fullStationsCount++;
+
+      // Scatter Data (Downsampled for performance)
+      if (Math.random() > 0.3) {
           scatterData.push({
-              x: bikes + s.empty_slots,
-              y: bikes,
-              name: s.name
+              capacity: bikes + slots,
+              bikes: bikes,
+              name: s.name,
+              fill: bikes === 0 ? '#ef4444' : '#3b82f6'
           });
       }
     });
 
-    const totalMechanical = Math.max(0, totalBikes - totalEbikes);
     const totalCapacity = totalBikes + totalSlots;
     const occupancyRate = totalCapacity > 0 ? (totalBikes / totalCapacity) * 100 : 0;
 
-    // Status Pie Data
     const statusData = [
         { name: 'Operatives', value: activeStations, color: '#22c55e' },
         { name: 'Fora de Servei', value: offlineStationsCount, color: '#64748b' },
     ];
 
-    // 2. Rankings
     const sortedByBikes = [...stations].sort((a, b) => b.free_bikes - a.free_bikes);
     const top5Bikes = sortedByBikes.slice(0, 5).map(s => ({ name: s.name.split('-')[1]?.trim() || s.name, value: s.free_bikes }));
 
@@ -118,7 +104,6 @@ const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, stations, onFo
         availabilityBins, 
         totalBikes, 
         totalEbikes, 
-        totalMechanical, 
         top5Bikes, 
         top5Slots, 
         scatterData, 
@@ -128,6 +113,19 @@ const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, stations, onFo
         offlineStationsCount,
     };
   }, [stations]);
+
+  // Network Trend Data from History
+  const networkTrend = useMemo(() => {
+      return history.map(snap => {
+          const total = snap.stations.reduce((acc, s) => acc + s.free_bikes, 0);
+          return {
+              time: snap.timestamp,
+              total
+          };
+      });
+  }, [history]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[5000] flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -140,22 +138,22 @@ const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, stations, onFo
                      <ChevronLeft size={24} />
                  </button>
                  <h2 className="text-xl md:text-2xl font-black text-slate-800 flex items-center gap-2">
-                    <Database className="text-blue-600" /> Estadístiques
+                    <Database className="text-blue-600" /> Estadístiques Globals
                 </h2>
             </div>
             
-            <div className="flex gap-4 mt-2 overflow-x-auto no-scrollbar">
+            <div className="flex gap-4 mt-2">
                  <button 
                     onClick={() => setActiveTab('overview')}
-                    className={`text-sm font-bold pb-1 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'overview' ? 'text-blue-600 border-blue-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}
+                    className={`text-sm font-bold pb-1 border-b-2 transition-colors ${activeTab === 'overview' ? 'text-blue-600 border-blue-600' : 'text-slate-400 border-transparent'}`}
                  >
                      Gràfiques
                  </button>
                  <button 
                     onClick={() => setActiveTab('log')}
-                    className={`text-sm font-bold pb-1 border-b-2 transition-colors flex items-center gap-1 whitespace-nowrap ${activeTab === 'log' ? 'text-blue-600 border-blue-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}
+                    className={`text-sm font-bold pb-1 border-b-2 transition-colors ${activeTab === 'log' ? 'text-blue-600 border-blue-600' : 'text-slate-400 border-transparent'}`}
                  >
-                     💾 Registre de Dades ({recordCount})
+                     Registre ({recordCount})
                  </button>
             </div>
           </div>
@@ -167,208 +165,147 @@ const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, stations, onFo
         {/* Content */}
         <div className="p-4 md:p-6 space-y-6 overflow-y-auto flex-1 bg-slate-50">
           
-          {/* Main Action Bar */}
-          <div className="bg-slate-900 text-white p-4 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
-               <div className="flex items-center gap-3 w-full md:w-auto">
-                   <div className="p-2 bg-slate-800 rounded-lg">
-                       <Database className="text-emerald-400" size={24} />
-                   </div>
-                   <div className="flex-1">
-                       <div className="font-bold text-sm">Base de Dades Local</div>
-                       <div className="text-xs text-slate-400">Guarda l'històric al navegador.</div>
-                   </div>
-               </div>
-               <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-                   <button 
-                     onClick={handleManualSave}
-                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-bold transition-all active:scale-95 text-xs whitespace-nowrap"
-                   >
-                       <Save size={16} /> Capturar
-                   </button>
-                   <button 
-                     onClick={downloadCSV}
-                     className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold transition-all active:scale-95 text-xs whitespace-nowrap"
-                   >
-                       <FileSpreadsheet size={16} /> CSV
-                   </button>
-                   <button 
-                     onClick={handleClearDB}
-                     className="flex-none flex items-center justify-center gap-2 bg-slate-800 hover:bg-red-900 text-slate-300 px-3 py-2 rounded-lg font-bold transition-all text-xs"
-                     title="Esborrar tot"
-                   >
-                       <Trash2 size={16} />
-                   </button>
-               </div>
-          </div>
-
-          {activeTab === 'log' ? (
-              <div className="animate-in fade-in slide-in-from-bottom-2">
-                  <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                      <Table size={18} /> Registre de Captures (Últimes 50)
-                  </h3>
-                  <div className="border rounded-xl overflow-hidden shadow-sm bg-white">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left text-slate-600 min-w-[600px]">
-                            <thead className="text-xs text-slate-700 uppercase bg-slate-50">
-                                <tr>
-                                    <th className="px-6 py-3">Data</th>
-                                    <th className="px-6 py-3">Estacions</th>
-                                    <th className="px-6 py-3">Bicis</th>
-                                    <th className="px-6 py-3">Espais</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {history.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={5} className="px-6 py-8 text-center text-slate-400">
-                                            Encara no hi ha dades. Prem "Capturar".
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    history.map((row) => {
-                                        const totalBikes = row.stations.reduce((acc, s) => acc + s.free_bikes, 0);
-                                        const totalSlots = row.stations.reduce((acc, s) => acc + s.empty_slots, 0);
-                                        
-                                        return (
-                                            <tr key={row.timestamp} className="bg-white border-b hover:bg-slate-50 transition-colors">
-                                                <td className="px-6 py-4 font-mono whitespace-nowrap">
-                                                    {new Date(row.timestamp).toLocaleString()}
-                                                </td>
-                                                <td className="px-6 py-4">{row.stations.length}</td>
-                                                <td className="px-6 py-4 font-bold text-blue-600">{totalBikes}</td>
-                                                <td className="px-6 py-4 font-bold text-slate-600">{totalSlots}</td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                      </div>
-                  </div>
-              </div>
-          ) : (
+          {activeTab === 'overview' ? (
             <>
                 {/* Summary Cards */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                     <div className="p-4 bg-white rounded-xl border border-slate-100 shadow-sm">
-                        <div className="text-slate-500 font-bold mb-1 text-[10px] md:text-xs uppercase flex items-center gap-1"><Database size={12}/> Flota</div>
-                        <div className="text-xl md:text-2xl font-black text-slate-900">{stats.totalBikes}</div>
-                        <div className="text-[10px] text-slate-400 font-bold mt-1">
-                             <span className="text-blue-600">{stats.totalEbikes} elèc</span>
+                        <div className="text-slate-500 font-bold mb-1 text-[10px] uppercase">Flota Total</div>
+                        <div className="text-2xl font-black text-slate-900">{stats.totalBikes}</div>
+                        <div className="text-xs text-blue-600 font-bold">{stats.totalEbikes} elèctriques</div>
+                    </div>
+                    <div className="p-4 bg-white rounded-xl border border-slate-100 shadow-sm">
+                        <div className="text-slate-500 font-bold mb-1 text-[10px] uppercase">Ocupació</div>
+                        <div className="text-2xl font-black text-indigo-900">{stats.occupancyRate.toFixed(1)}%</div>
+                        <div className="w-full h-1 bg-indigo-100 mt-2 rounded-full overflow-hidden">
+                            <div className="h-full bg-indigo-600" style={{ width: `${stats.occupancyRate}%` }}></div>
                         </div>
                     </div>
-                    <div className="p-4 bg-white rounded-xl border border-indigo-100 shadow-sm relative overflow-hidden">
-                        <div className="absolute top-0 left-0 h-1 bg-indigo-500" style={{ width: `${stats.occupancyRate}%` }}></div>
-                        <div className="text-indigo-800 font-bold mb-1 text-[10px] md:text-xs uppercase flex items-center gap-1"><Activity size={12}/> Saturació</div>
-                        <div className="text-xl md:text-2xl font-black text-indigo-900">{stats.occupancyRate.toFixed(1)}%</div>
+                    <div className="p-4 bg-white rounded-xl border border-slate-100 shadow-sm">
+                        <div className="text-slate-500 font-bold mb-1 text-[10px] uppercase">Estacions Plenes</div>
+                        <div className="text-2xl font-black text-red-600">{stats.fullStationsCount}</div>
                     </div>
-                    <div className="p-4 bg-white rounded-xl border border-red-100 shadow-sm">
-                        <div className="text-red-800 font-bold mb-1 text-[10px] md:text-xs uppercase flex items-center gap-1"><Ban size={12}/> Plenes</div>
-                        <div className="text-xl md:text-2xl font-black text-red-900">{stats.fullStationsCount}</div>
-                    </div>
-                    <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-                         <div className="text-gray-600 font-bold mb-1 text-[10px] md:text-xs uppercase flex items-center gap-1"><ServerOff size={12}/> Offline</div>
-                        <div className="text-xl md:text-2xl font-black text-gray-800">{stats.offlineStationsCount}</div>
+                    <div className="p-4 bg-white rounded-xl border border-slate-100 shadow-sm">
+                        <div className="text-slate-500 font-bold mb-1 text-[10px] uppercase">Fora de Servei</div>
+                        <div className="text-2xl font-black text-gray-500">{stats.offlineStationsCount}</div>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 pb-10">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     
-                    {/* Status Breakdown Pie */}
+                    {/* NEW: Network Trend Chart */}
+                    <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                         <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                            <LineChart size={18} className="text-blue-500" /> Tendència de la Xarxa
+                        </h3>
+                        <div className="h-48">
+                            {networkTrend.length > 1 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={networkTrend}>
+                                        <defs>
+                                            <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.5}/>
+                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="time" type="number" domain={['dataMin', 'dataMax']} tickFormatter={t => new Date(t).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} style={{fontSize: '10px'}} />
+                                        <YAxis domain={['auto', 'auto']} style={{fontSize: '10px'}} />
+                                        <Tooltip labelFormatter={t => new Date(t).toLocaleTimeString()} />
+                                        <Area type="monotone" dataKey="total" stroke="#2563eb" fill="url(#colorNet)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-slate-400 text-sm">
+                                    Necessitem més dades històriques.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Status Pie */}
                     <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                         <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                            <Signal size={18} className="text-blue-500" /> Salut de la Xarxa
+                            <Signal size={18} className="text-green-500" /> Estat del Servei
                         </h3>
-                        <div className="h-56 flex items-center">
+                        <div className="h-48">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
-                                    <Pie
-                                        data={stats.statusData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={80}
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                    >
-                                        {stats.statusData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
+                                    <Pie data={stats.statusData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={5} dataKey="value">
+                                        {stats.statusData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                                     </Pie>
-                                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
-                                    <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" />
+                                    <Tooltip />
+                                    <Legend verticalAlign="middle" align="right" layout="vertical" />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
 
-                    {/* Availability Histogram */}
-                    <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                    {/* NEW: Scatter Chart (Distribution) */}
+                    <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm lg:col-span-2">
                         <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                            <AlertTriangle size={18} className="text-amber-500" /> Disponibilitat
+                            <ScatterIcon size={18} className="text-purple-500" /> Distribució (Capacitat vs Bicis)
                         </h3>
-                        <div className="h-56">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={stats.availabilityBins}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
-                                <YAxis fontSize={10} tickLine={false} axisLine={false} />
-                                <Tooltip 
-                                    cursor={{fill: 'rgba(0,0,0,0.05)'}}
-                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
-                                />
-                                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                                    {stats.availabilityBins.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                        <div className="h-64">
+                             <ResponsiveContainer width="100%" height="100%">
+                                <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                                    <CartesianGrid />
+                                    <XAxis type="number" dataKey="capacity" name="Capacitat Total" unit=" llocs" style={{fontSize: '10px'}} />
+                                    <YAxis type="number" dataKey="bikes" name="Bicis Disponibles" unit=" bicis" style={{fontSize: '10px'}} />
+                                    <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                                    <Scatter name="Estacions" data={stats.scatterData} fill="#8884d8" />
+                                </ScatterChart>
+                             </ResponsiveContainer>
                         </div>
+                        <p className="text-[10px] text-center text-slate-400">
+                            Cada punt és una estació. X: Mida de l'estació, Y: Bicis actuals.
+                        </p>
                     </div>
 
-                    {/* Top Stations List */}
-                    <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col lg:col-span-2">
+                    {/* Rankings */}
+                    <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm lg:col-span-2">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-bold text-slate-700 flex items-center gap-2">
-                                <TrendingUp size={18} className="text-purple-500" /> Rànquing TOP 5
+                                <TrendingUp size={18} className="text-orange-500" /> Top Estacions
                             </h3>
                             <div className="flex bg-slate-100 rounded-lg p-1">
-                                <button 
-                                    onClick={() => setRankTab('bikes')}
-                                    className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${rankTab === 'bikes' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}
-                                >
-                                    Bicis
-                                </button>
-                                <button 
-                                    onClick={() => setRankTab('slots')}
-                                    className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${rankTab === 'slots' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}
-                                >
-                                    Parking
-                                </button>
+                                <button onClick={() => setRankTab('bikes')} className={`px-3 py-1 text-xs font-bold rounded ${rankTab === 'bikes' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}>Bicis</button>
+                                <button onClick={() => setRankTab('slots')} className={`px-3 py-1 text-xs font-bold rounded ${rankTab === 'slots' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}>Llocs</button>
                             </div>
                         </div>
-                        
-                        <div className="space-y-3 flex-1">
+                        <div className="space-y-2">
                             {(rankTab === 'bikes' ? stats.top5Bikes : stats.top5Slots).map((st, i) => (
-                                <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                                    <div className="flex items-center gap-3 overflow-hidden">
-                                        <span className="w-6 h-6 shrink-0 flex items-center justify-center bg-slate-200 text-slate-600 font-bold text-xs rounded-full">
-                                            {i + 1}
-                                        </span>
-                                        <span className="text-sm font-medium text-slate-700 truncate">{st.name}</span>
-                                    </div>
-                                    <span className={`text-sm font-black whitespace-nowrap ml-2 ${rankTab === 'bikes' ? 'text-blue-600' : 'text-slate-600'}`}>
-                                        {st.value} {rankTab === 'bikes' ? 'bicis' : 'llocs'}
-                                    </span>
+                                <div key={i} className="flex justify-between p-2 bg-slate-50 rounded">
+                                    <span className="text-sm font-medium text-slate-700 truncate w-2/3">{i+1}. {st.name}</span>
+                                    <span className="font-bold text-blue-600">{st.value}</span>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </div>
             </>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                 <table className="w-full text-sm text-left text-slate-600">
+                    <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b">
+                        <tr>
+                            <th className="px-4 py-3">Data</th>
+                            <th className="px-4 py-3">Estacions</th>
+                            <th className="px-4 py-3">Bicis</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {history.map((row) => (
+                            <tr key={row.timestamp} className="border-b hover:bg-slate-50">
+                                <td className="px-4 py-3">{new Date(row.timestamp).toLocaleTimeString()}</td>
+                                <td className="px-4 py-3">{row.stations.length}</td>
+                                <td className="px-4 py-3 font-bold">{row.stations.reduce((a,b)=>a+b.free_bikes,0)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
           )}
-
         </div>
       </div>
     </div>
