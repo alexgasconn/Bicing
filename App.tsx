@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapViewState, FilterCriteria, RadarPoint, RadarSelectionMode } from './types';
+import { MapViewState, FilterCriteria, RadarPoint, RadarSelectionMode, Station } from './types';
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from './constants';
 import StationMap from './components/StationMap';
 import Dashboard from './components/Dashboard';
@@ -7,6 +7,7 @@ import StatsModal from './components/StatsModal';
 import FilterPanel from './components/FilterPanel';
 import QuickFilters from './components/QuickFilters';
 import CommuteRadar from './components/CommuteRadar';
+import StationAnalyticsModal from './components/StationAnalyticsModal';
 import { Activity, Crosshair } from 'lucide-react';
 import { seedDatabaseFromCSV } from './services/db';
 
@@ -48,6 +49,7 @@ const App: React.FC = () => {
   // 4. Modal States
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [selectedStationForStats, setSelectedStationForStats] = useState<Station | null>(null);
   
   // 5. Radar State
   const [isRadarOpen, setIsRadarOpen] = useState(false);
@@ -143,6 +145,7 @@ const App: React.FC = () => {
           onMapClick={handleMapClick}
           onSetSniper={setSniper}
           activeSniper={sniperConfig}
+          onOpenStationStats={(s) => setSelectedStationForStats(s)}
         />
         
         {/* Overlay Dashboard */}
@@ -217,6 +220,13 @@ const App: React.FC = () => {
                 onCriteriaChange={setFilterCriteria}
                 totalResults={filteredStations.length}
                 userLocation={userLocation}
+            />
+        )}
+
+        {selectedStationForStats && (
+            <StationAnalyticsModal 
+                station={selectedStationForStats}
+                onClose={() => setSelectedStationForStats(null)}
             />
         )}
       </div>

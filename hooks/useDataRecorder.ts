@@ -3,7 +3,7 @@ import { Station } from '../types';
 import { saveSnapshot } from '../services/db';
 
 const STORAGE_KEY = 'bicing_last_save_time';
-const INTERVAL_MS = 1 * 60 * 1000; // 1 Minute
+const INTERVAL_MS = 5 * 60 * 1000; // 5 Minutes
 
 export const useDataRecorder = (stations: Station[]) => {
   const lastSaveRef = useRef<number>(0);
@@ -32,7 +32,7 @@ export const useDataRecorder = (stations: Station[]) => {
     // Check immediately when data loads
     checkAndSave();
 
-    // Then check every minute if we need to save
+    // Check frequently (every minute) to ensure we trigger close to the 5 min mark
     const timer = setInterval(checkAndSave, 60000);
 
     return () => clearInterval(timer);

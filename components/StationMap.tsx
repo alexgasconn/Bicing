@@ -2,7 +2,9 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { Station, MapViewState, RadarPoint, RadarSelectionMode, SniperConfig, ZoneCluster } from '../types';
-import { BatteryCharging, Bike, Heart, Navigation, Crosshair, Bell } from 'lucide-react';
+import { BatteryCharging, Bike, Heart, Navigation, Crosshair, Bell, BarChart3 } from 'lucide-react';
+import StationPrediction from './StationPrediction';
+import { DEFAULT_CENTER, DEFAULT_ZOOM } from '../constants';
 
 // Fix Leaflet default icon issues
 const DefaultIcon = L.icon({
@@ -191,6 +193,7 @@ interface StationMapProps {
   onMapClick?: (lat: number, lng: number) => void;
   onSetSniper?: (config: SniperConfig) => void;
   activeSniper?: SniperConfig | null;
+  onOpenStationStats?: (station: Station) => void;
 }
 
 const MapController: React.FC<{ viewState: MapViewState }> = ({ viewState }) => {
@@ -231,7 +234,8 @@ const LayerController: React.FC<{
   onToggleFavorite: (id: string) => void;
   onSetSniper?: (config: SniperConfig) => void;
   activeSniper?: SniperConfig | null;
-}> = ({ stations, favorites, onToggleFavorite, onSetSniper, activeSniper }) => {
+  onOpenStationStats?: (station: Station) => void;
+}> = ({ stations, favorites, onToggleFavorite, onSetSniper, activeSniper, onOpenStationStats }) => {
   const map = useMap();
   const [bounds, setBounds] = useState(map.getBounds());
   const [zoom, setZoom] = useState(map.getZoom());
@@ -436,6 +440,17 @@ const LayerController: React.FC<{
                             <div className="h-full bg-red-500" style={{ width: `${station.free_bikes > 0 ? (mechanical/station.free_bikes)*100 : 0}%`}}></div>
                         </div>
                     </div>
+                    
+                    {/* Prediction Component Injection */}
+                    <StationPrediction station={station} />
+
+                    {/* NEW: Analytics Button */}
+                    <button 
+                        onClick={() => onOpenStationStats && onOpenStationStats(station)}
+                        className="w-full mt-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors border border-slate-200"
+                    >
+                        <BarChart3 size={12} /> Veure Històric i Patrons
+                    </button>
 
                     {isSniper && (
                          <div className="mt-2 bg-pink-50 text-pink-700 text-[10px] p-1.5 rounded text-center font-bold flex items-center justify-center gap-1">
@@ -452,25 +467,30 @@ const LayerController: React.FC<{
   );
 };
 
-const StationMap: React.FC<StationMapProps> = ({ 
-  stations, 
-  viewState, 
-  favorites, 
-  onToggleFavorite, 
-  userLocation, 
-  radarOrigin, 
-  radarDestination, 
-  selectionMode, 
-  onMapClick, 
-  onSetSniper, 
-  activeSniper 
+const StationMap: React.FC<StationMapProps> = ({
+  stations,
+  viewState,
+  favorites,
+  onToggleFavorite,
+  filterRadius,
+  userLocation,
+  radarOrigin,
+  radarDestination,
+  selectionMode,
+  onMapClick,
+  onSetSniper,
+  activeSniper,
+  onOpenStationStats
 }) => {
   return (
-    <MapContainer 
-      center={viewState.center} 
-      zoom={viewState.zoom} 
-      style={{ height: '100%', width: '100%' }}
+    <MapContainer
+      center={DEFAULT_CENTER}
+      zoom={DEFAULT_ZOOM}
+      className="h-full w-full z-0"
       zoomControl={false}
+      minZoom={11}
+      maxZoom={18}
+      maxBounds={[[41.3, 2.0], [41.5, 2.3]]}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
@@ -480,27 +500,35 @@ const StationMap: React.FC<StationMapProps> = ({
       <MapController viewState={viewState} />
       <MapInvalidator />
       <ClickHandler onMapClick={onMapClick} selectionMode={selectionMode} />
-
+      
       <LayerController 
         stations={stations}
         favorites={favorites}
         onToggleFavorite={onToggleFavorite}
         onSetSniper={onSetSniper}
         activeSniper={activeSniper}
+        onOpenStationStats={onOpenStationStats}
       />
 
-      {/* User Location */}
       {userLocation && isValidLatLng(userLocation) && (
-        <Marker position={userLocation} icon={getUserIcon()} zIndexOffset={2000} />
+        <Marker position={userLocation} icon={getUserIcon()} />
       )}
 
-      {/* Radar Points */}
+      {filterRadius && filterRadius > 0 && userLocation && isValidLatLng(userLocation) && (
+        <Circle 
+          center={userLocation} 
+          radius={filterRadius} 
+          pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, dashArray: '10, 10' }} 
+        />
+      )}
+
       {radarOrigin && (
-         <Marker position={[radarOrigin.lat, radarOrigin.lng]} icon={getRadarIcon('origin')} zIndexOffset={3000} />
+        <Marker position={[radarOrigin.lat, radarOrigin.lng]} icon={getRadarIcon('origin')} />
       )}
       {radarDestination && (
-         <Marker position={[radarDestination.lat, radarDestination.lng]} icon={getRadarIcon('destination')} zIndexOffset={3000} />
+        <Marker position={[radarDestination.lat, radarDestination.lng]} icon={getRadarIcon('destination')} />
       )}
+
     </MapContainer>
   );
 };

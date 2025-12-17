@@ -10,6 +10,15 @@ export interface Snapshot {
   stations: Station[];
 }
 
+export interface StationHistoryPoint {
+    timestamp: number;
+    free_bikes: number;
+    empty_slots: number;
+    ebikes: number;
+    mechanical: number;
+    status: 'online' | 'offline';
+}
+
 // Open Database Helper
 const openDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
@@ -45,7 +54,11 @@ export const saveSnapshot = async (stations: Station[]): Promise<void> => {
         free_bikes: s.free_bikes,
         empty_slots: s.empty_slots,
         timestamp: s.timestamp,
-        extra: { ebikes: s.extra?.ebikes }
+        extra: { 
+            ebikes: s.extra?.ebikes,
+            status: s.extra?.status,
+            online: s.extra?.online
+        }
       }))
     };
 
@@ -89,6 +102,61 @@ export const getHistory = async (limit: number = 50): Promise<Snapshot[]> => {
     }
 };
 
+// Get History for a Specific Station (for Analytics)
+export const getStationHistory = async (stationId: string): Promise<StationHistoryPoint[]> => {
+    try {
+        const db = await openDB();
+        return new Promise((resolve) => {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const req = store.getAll();
+            req.onsuccess = () => {
+                const snapshots = req.result as Snapshot[];
+                
+                const points: StationHistoryPoint[] = [];
+                
+                snapshots.forEach(snap => {
+                    const st = snap.stations.find(s => s.id === stationId);
+                    if (st) {
+                        const ebikes = st.extra?.ebikes || 0;
+                        points.push({
+                            timestamp: snap.timestamp,
+                            free_bikes: st.free_bikes,
+                            empty_slots: st.empty_slots,
+                            ebikes: ebikes,
+                            mechanical: Math.max(0, st.free_bikes - ebikes),
+                            status: (st.extra?.status === 'CLOSED' || st.extra?.online === false) ? 'offline' : 'online'
+                        });
+                    }
+                });
+
+                // Sort purely by time ascending
+                resolve(points.sort((a, b) => a.timestamp - b.timestamp));
+            };
+        });
+    } catch (e) {
+        return [];
+    }
+};
+
+// Get ALL history (for prediction analysis)
+export const getAllHistory = async (): Promise<Snapshot[]> => {
+    try {
+        const db = await openDB();
+        return new Promise((resolve) => {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const req = store.getAll();
+            req.onsuccess = () => {
+                resolve(req.result as Snapshot[]);
+            };
+            req.onerror = () => resolve([]);
+        });
+    } catch (e) {
+        return [];
+    }
+};
+
 // Clear DB
 export const clearDatabase = async (): Promise<void> => {
     const db = await openDB();
@@ -120,19 +188,24 @@ export const seedDatabaseFromCSV = async (csvUrl: string): Promise<boolean> => {
         
         dataLines.forEach(line => {
             if (!line.trim()) return;
-            // CSV Format: Timestamp_ISO;Timestamp_Local;Station_ID;Station_Name;Free_Bikes;Empty_Slots;E_Bikes
+            // CSV Format: Timestamp_ISO;Timestamp_Local;Station_ID;Station_Name;Free_Bikes;Empty_Slots;E_Bikes;Latitude;Longitude
             const cols = line.split(';');
             if (cols.length < 7) return;
 
             const isoDate = cols[0];
+            
+            // Handle Coordinates if present (cols 7 and 8)
+            const lat = cols.length > 7 ? parseFloat(cols[7]) : 0;
+            const lng = cols.length > 8 ? parseFloat(cols[8]) : 0;
+
             const station: Station = {
                 id: cols[2],
                 name: cols[3].replace(/^"|"$/g, ''), // Remove quotes
                 free_bikes: parseInt(cols[4]),
                 empty_slots: parseInt(cols[5]),
                 timestamp: isoDate,
-                latitude: 0, // CSV doesn't have coords to save space, but UI might need logic handling this
-                longitude: 0, 
+                latitude: !isNaN(lat) ? lat : 0,
+                longitude: !isNaN(lng) ? lng : 0, 
                 extra: { ebikes: parseInt(cols[6]) }
             };
 
@@ -151,9 +224,6 @@ export const seedDatabaseFromCSV = async (csvUrl: string): Promise<boolean> => {
         let inserted = 0;
         snapshotsMap.forEach((stations, isoDate) => {
             const timestamp = new Date(isoDate).getTime();
-            // We need coords for the map logic to work ideally, but historical data is mostly for charts/stats.
-            // If we wanted coords, we'd need to merge with current station list or save them in CSV (larger file).
-            
             store.add({
                 timestamp,
                 stations
@@ -190,7 +260,7 @@ export const downloadCSV = async () => {
     }
 
     // CSV Header (using semicolon separator)
-    let csvContent = "Timestamp_ISO;Timestamp_Local;Station_ID;Station_Name;Free_Bikes;Empty_Slots;E_Bikes\n";
+    let csvContent = "Timestamp_ISO;Timestamp_Local;Station_ID;Station_Name;Free_Bikes;Empty_Slots;E_Bikes;Latitude;Longitude\n";
 
     // Flatten Data
     snapshots.forEach(snap => {
@@ -209,7 +279,9 @@ export const downloadCSV = async () => {
           safeName,
           st.free_bikes,
           st.empty_slots,
-          ebikes
+          ebikes,
+          st.latitude,
+          st.longitude
         ].join(";");
         
         csvContent += row + "\n";
@@ -221,7 +293,7 @@ export const downloadCSV = async () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `seed_data.csv`); // Changed default name to suggest using it as seed
+    link.setAttribute("download", `bicing_data_${new Date().toISOString().slice(0,10)}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
