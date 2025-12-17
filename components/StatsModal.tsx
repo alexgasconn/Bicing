@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Station } from '../types';
-import { X, TrendingUp, Activity, Database, Signal, ChevronLeft, ScatterChart as ScatterIcon, LineChart, Download, Trash2 } from 'lucide-react';
+import { X, TrendingUp, Database, Signal, ChevronLeft, ScatterChart as ScatterIcon, LineChart, Download, Trash2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid, ScatterChart, Scatter, PieChart, Pie, Legend } from 'recharts';
 import { downloadCSV, getSnapshotCount, clearDatabase, getHistory, Snapshot } from '../services/db';
 
@@ -147,7 +147,7 @@ const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, stations, onFo
                  <div className="flex items-center gap-2">
                      <button 
                         onClick={downloadCSV}
-                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-lg flex items-center gap-2 text-xs font-bold transition-colors"
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-lg flex items-center gap-2 text-xs font-bold transition-colors border border-slate-200"
                         title="Descarregar CSV"
                      >
                         <Download size={16} /> 
@@ -155,7 +155,7 @@ const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, stations, onFo
                      </button>
                      <button 
                         onClick={handleClearDB}
-                        className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-lg flex items-center gap-2 text-xs font-bold transition-colors"
+                        className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-lg flex items-center gap-2 text-xs font-bold transition-colors border border-red-100"
                         title="Esborrar Històric"
                      >
                         <Trash2 size={16} />

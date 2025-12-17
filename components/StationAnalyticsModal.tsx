@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Station } from '../types';
 import { getStationHistory, StationHistoryPoint } from '../services/db';
-import { X, TrendingUp, Clock, BarChart3, BatteryCharging, Bike, AlertCircle, ChevronLeft, ShieldCheck, Zap, CalendarClock, Activity, Maximize, LayoutDashboard } from 'lucide-react';
+import { X, TrendingUp, Clock, BarChart3, BatteryCharging, AlertCircle, ChevronLeft, ShieldCheck, Zap, CalendarClock, Activity, Maximize, LayoutDashboard } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ComposedChart, Line, BarChart, Bar, Cell, Legend } from 'recharts';
 
 interface StationAnalyticsModalProps {
@@ -28,7 +28,8 @@ const StationAnalyticsModal: React.FC<StationAnalyticsModalProps> = ({ station, 
 
   // --- ANALYTICS LOGIC ---
   const analysis = useMemo(() => {
-      if (history.length === 0) return null;
+      // Allow visualization with just 2 points so user sees something immediately
+      if (history.length < 2) return null;
 
       const buckets = new Array(48).fill(0).map(() => ({ 
           totalBikes: 0, 
@@ -51,6 +52,7 @@ const StationAnalyticsModal: React.FC<StationAnalyticsModalProps> = ({ station, 
           const d = new Date(point.timestamp);
           const hour = d.getHours();
           const minute = d.getMinutes();
+          // Map to 0-47 index (30 min slots)
           const index = hour * 2 + (minute >= 30 ? 1 : 0);
           
           buckets[index].totalBikes += point.free_bikes;
@@ -77,6 +79,7 @@ const StationAnalyticsModal: React.FC<StationAnalyticsModalProps> = ({ station, 
 
       const reliability = (reliableCount / history.length) * 100;
       const avgEbikes = totalEbikes / history.length;
+      // Best slot logic
       const bestSlot = [...patternData].sort((a, b) => b.avgBikes - a.avgBikes)[0];
 
       return {
@@ -92,7 +95,7 @@ const StationAnalyticsModal: React.FC<StationAnalyticsModalProps> = ({ station, 
 
   return (
     <div className="fixed inset-0 z-[6000] flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full h-[95dvh] md:h-auto md:max-h-[90vh] md:max-w-4xl md:rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="bg-white w-full h-[90dvh] md:h-auto md:max-h-[85vh] md:max-w-4xl md:rounded-2xl shadow-2xl overflow-hidden flex flex-col">
         
         {/* Header */}
         <div className="bg-slate-900 text-white p-4 flex justify-between items-center shrink-0 safe-area-top">
@@ -102,7 +105,7 @@ const StationAnalyticsModal: React.FC<StationAnalyticsModalProps> = ({ station, 
                  </button>
                 <div>
                     <div className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">
-                        ANALÍTICA DETALLADA
+                        ANALÍTICA D'ESTACIÓ
                     </div>
                     <h2 className="text-xl font-black leading-tight truncate max-w-[200px] md:max-w-full">{station.name}</h2>
                 </div>
@@ -118,15 +121,15 @@ const StationAnalyticsModal: React.FC<StationAnalyticsModalProps> = ({ station, 
                  <div className="animate-spin mb-4"><TrendingUp size={32} /></div>
                  <p>Carregant dades...</p>
             </div>
-        ) : history.length < 5 ? (
+        ) : (!analysis) ? (
              <div className="flex-1 flex flex-col items-center justify-center p-10 text-slate-400 text-center">
                  <AlertCircle size={48} className="mb-4 text-slate-300" />
                  <h3 className="text-lg font-bold text-slate-600">Dades Insuficients</h3>
                  <p className="max-w-md mx-auto mt-2 text-sm">
-                     Necessitem més temps per generar gràfics útils.
+                     Necessitem almenys 2 lectures històriques per començar a dibuixar gràfics.
                  </p>
             </div>
-        ) : analysis && (
+        ) : (
             <div className="flex flex-col h-full overflow-hidden">
                 
                 {/* Tabs Navigation */}
@@ -135,7 +138,7 @@ const StationAnalyticsModal: React.FC<StationAnalyticsModalProps> = ({ station, 
                         onClick={() => setActiveTab('stats')}
                         className={`flex-1 py-3 px-4 text-xs font-bold border-b-2 transition-colors whitespace-nowrap flex items-center justify-center gap-2 ${activeTab === 'stats' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500'}`}
                     >
-                        <LayoutDashboard size={14} /> Resum
+                        <LayoutDashboard size={14} /> Stats
                     </button>
                     <button 
                         onClick={() => setActiveTab('evolution')}
@@ -153,7 +156,7 @@ const StationAnalyticsModal: React.FC<StationAnalyticsModalProps> = ({ station, 
                         onClick={() => setActiveTab('range')}
                         className={`flex-1 py-3 px-4 text-xs font-bold border-b-2 transition-colors whitespace-nowrap flex items-center justify-center gap-2 ${activeTab === 'range' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500'}`}
                     >
-                        <CalendarClock size={14} /> Certesa
+                        <CalendarClock size={14} /> Rangs
                     </button>
                 </div>
 
@@ -165,13 +168,13 @@ const StationAnalyticsModal: React.FC<StationAnalyticsModalProps> = ({ station, 
                         <div className="grid grid-cols-2 gap-3 md:gap-4 animate-in slide-in-from-left-2">
                             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm col-span-2">
                                 <div className="text-slate-500 text-xs font-bold uppercase mb-1 flex items-center gap-1">
-                                    <Clock size={14}/> Millor Hora per trobar bici
+                                    <Clock size={14}/> Millor Hora (30 min)
                                 </div>
                                 <div className="text-4xl font-black text-slate-800">
                                     {analysis.bestSlot.time}
                                 </div>
                                 <div className="text-sm text-slate-500 mt-1">
-                                    Mitjana de {analysis.bestSlot.avgBikes} bicis disponibles
+                                    Mitjana de {analysis.bestSlot.avgBikes} bicis
                                 </div>
                             </div>
                             
@@ -183,7 +186,7 @@ const StationAnalyticsModal: React.FC<StationAnalyticsModalProps> = ({ station, 
                                     {analysis.reliability.toFixed(0)}%
                                 </div>
                                 <div className="text-[10px] text-slate-400 leading-tight mt-1">
-                                    Temps amb estoc &gt; 2
+                                    Disponibilitat &gt; 2
                                 </div>
                             </div>
 
@@ -195,39 +198,40 @@ const StationAnalyticsModal: React.FC<StationAnalyticsModalProps> = ({ station, 
                                      {(analysis.avgEbikes / (analysis.bestSlot.avgBikes || 1) * 100).toFixed(0)}%
                                 </div>
                                 <div className="text-[10px] text-slate-400 leading-tight mt-1">
-                                    Proporció mitjana
+                                    Mitjana de flota
                                 </div>
                             </div>
 
                             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm col-span-2">
                                 <div className="text-slate-500 text-xs font-bold uppercase mb-1 flex items-center gap-1">
-                                    <Maximize size={14}/> Capacitat Màxima Observada
+                                    <Maximize size={14}/> Capacitat Màxima
                                 </div>
                                 <div className="text-3xl font-black text-slate-700">
-                                    {analysis.maxCapacityObserved} unitats
+                                    {analysis.maxCapacityObserved}
                                 </div>
                                 <div className="text-xs text-slate-400 mt-1">
-                                    Suma màxima de bicis + forats registrada
+                                    Bicis + Llocs buits
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* TAB 2: EVOLUTION (Line/Area Split) */}
+                    {/* TAB 2: EVOLUTION (Elèctric vs Mecànic) */}
                     {activeTab === 'evolution' && (
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-full min-h-[300px] flex flex-col animate-in slide-in-from-right-2">
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col animate-in slide-in-from-right-2">
                             <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2 text-sm">
                                 <Activity size={16} className="text-blue-500" /> Evolució (Elèctric vs Mecànic)
                             </h3>
-                            <div className="flex-1 w-full">
+                            {/* FIXED HEIGHT IS CRITICAL FOR RECHARTS IN MODALS */}
+                            <div className="w-full h-[300px]">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart data={history}>
                                         <defs>
-                                            <linearGradient id="colorMech" x1="0" y1="0" x2="0" y2="1">
+                                            <linearGradient id="colorMechEvo" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
                                                 <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1}/>
                                             </linearGradient>
-                                            <linearGradient id="colorElec" x1="0" y1="0" x2="0" y2="1">
+                                            <linearGradient id="colorElecEvo" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
                                                 <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
                                             </linearGradient>
@@ -249,16 +253,18 @@ const StationAnalyticsModal: React.FC<StationAnalyticsModalProps> = ({ station, 
                                             dataKey="ebikes" 
                                             stackId="1" 
                                             stroke="#3b82f6" 
-                                            fill="url(#colorElec)" 
+                                            fill="url(#colorElecEvo)" 
                                             name="Elèctriques"
+                                            animationDuration={500}
                                         />
                                         <Area 
                                             type="monotone" 
                                             dataKey="mechanical" 
                                             stackId="1" 
                                             stroke="#ef4444" 
-                                            fill="url(#colorMech)" 
+                                            fill="url(#colorMechEvo)" 
                                             name="Mecàniques"
+                                            animationDuration={500}
                                         />
                                     </AreaChart>
                                 </ResponsiveContainer>
@@ -268,11 +274,11 @@ const StationAnalyticsModal: React.FC<StationAnalyticsModalProps> = ({ station, 
 
                     {/* TAB 3: PATTERNS (Bar Chart) */}
                     {activeTab === 'pattern' && (
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-full min-h-[300px] flex flex-col animate-in slide-in-from-right-2">
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col animate-in slide-in-from-right-2">
                             <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2 text-sm">
-                                <BarChart3 size={16} className="text-orange-500" /> Disponibilitat Mitjana per Hora
+                                <BarChart3 size={16} className="text-orange-500" /> Disponibilitat Mitjana per Mitja Hora
                             </h3>
-                            <div className="flex-1 w-full">
+                            <div className="w-full h-[300px]">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={analysis.patternData} barCategoryGap={2}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -296,11 +302,11 @@ const StationAnalyticsModal: React.FC<StationAnalyticsModalProps> = ({ station, 
 
                     {/* TAB 4: RANGE (Composed Area Chart) */}
                     {activeTab === 'range' && (
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-full min-h-[300px] flex flex-col animate-in slide-in-from-right-2">
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col animate-in slide-in-from-right-2">
                             <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2 text-sm">
                                 <CalendarClock size={16} className="text-emerald-500" /> Variabilitat i Rangs (Min-Max)
                             </h3>
-                            <div className="flex-1 w-full">
+                            <div className="w-full h-[300px]">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <ComposedChart data={analysis.patternData}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -313,16 +319,16 @@ const StationAnalyticsModal: React.FC<StationAnalyticsModalProps> = ({ station, 
                                         <Tooltip labelStyle={{color: '#333'}} />
                                         <Legend verticalAlign="top" height={36}/>
                                         
-                                        {/* Area representing the Min-Max Range */}
+                                        {/* The 'range' dataKey expects [min, max] array which we calculate in analysis */}
                                         <Area 
                                             dataKey="range" 
                                             stroke="#10b981" 
                                             fill="#d1fae5" 
                                             opacity={0.6}
-                                            name="Rang Històric (Min-Max)"
+                                            name="Rang (Min-Max)"
+                                            animationDuration={500}
                                         />
                                         
-                                        {/* Line representing the Average */}
                                         <Line 
                                             type="monotone" 
                                             dataKey="avgBikes" 
@@ -330,12 +336,13 @@ const StationAnalyticsModal: React.FC<StationAnalyticsModalProps> = ({ station, 
                                             strokeWidth={3} 
                                             dot={false}
                                             name="Mitjana"
+                                            animationDuration={500}
                                         />
                                     </ComposedChart>
                                 </ResponsiveContainer>
                             </div>
                             <p className="text-[10px] text-center text-slate-400 mt-2">
-                                *L'àrea verda mostra la diferència entre el mínim i màxim de bicis vist mai a aquesta hora.
+                                *Àrea verda: Diferència històrica entre el mínim i el màxim registrat a aquesta hora.
                             </p>
                         </div>
                     )}
