@@ -78,13 +78,9 @@ export const getHistory = async (limit: number = 50): Promise<Snapshot[]> => {
         return new Promise((resolve) => {
             const tx = db.transaction(STORE_NAME, 'readonly');
             const store = tx.objectStore(STORE_NAME);
-            // Get all keys, then get the last 'limit' items
-            // Note: IndexedDB is not great for reverse ordering without a cursor, 
-            // but for this dataset size getAll is fine.
             const req = store.getAll();
             req.onsuccess = () => {
                 const all = req.result as Snapshot[];
-                // Return reversed (newest first)
                 resolve(all.reverse().slice(0, limit));
             };
         });
@@ -99,6 +95,85 @@ export const clearDatabase = async (): Promise<void> => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     tx.objectStore(STORE_NAME).clear();
 };
+
+// Seed Database from CSV
+export const seedDatabaseFromCSV = async (csvUrl: string): Promise<boolean> => {
+    try {
+        const count = await getSnapshotCount();
+        if (count > 0) {
+            console.log("[DB] Database already has data. Skipping seed.");
+            return false;
+        }
+
+        console.log("[DB] Fetching seed data from:", csvUrl);
+        const response = await fetch(csvUrl);
+        if (!response.ok) throw new Error("Seed file not found");
+        
+        const csvText = await response.text();
+        const lines = csvText.split('\n');
+        
+        // Skip header
+        const dataLines = lines.slice(1);
+        
+        // Group by Timestamp (Map<TimestampISO, Station[]>)
+        const snapshotsMap = new Map<string, Station[]>();
+        
+        dataLines.forEach(line => {
+            if (!line.trim()) return;
+            // CSV Format: Timestamp_ISO;Timestamp_Local;Station_ID;Station_Name;Free_Bikes;Empty_Slots;E_Bikes
+            const cols = line.split(';');
+            if (cols.length < 7) return;
+
+            const isoDate = cols[0];
+            const station: Station = {
+                id: cols[2],
+                name: cols[3].replace(/^"|"$/g, ''), // Remove quotes
+                free_bikes: parseInt(cols[4]),
+                empty_slots: parseInt(cols[5]),
+                timestamp: isoDate,
+                latitude: 0, // CSV doesn't have coords to save space, but UI might need logic handling this
+                longitude: 0, 
+                extra: { ebikes: parseInt(cols[6]) }
+            };
+
+            if (!snapshotsMap.has(isoDate)) {
+                snapshotsMap.set(isoDate, []);
+            }
+            snapshotsMap.get(isoDate)?.push(station);
+        });
+
+        if (snapshotsMap.size === 0) return false;
+
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+
+        let inserted = 0;
+        snapshotsMap.forEach((stations, isoDate) => {
+            const timestamp = new Date(isoDate).getTime();
+            // We need coords for the map logic to work ideally, but historical data is mostly for charts/stats.
+            // If we wanted coords, we'd need to merge with current station list or save them in CSV (larger file).
+            
+            store.add({
+                timestamp,
+                stations
+            });
+            inserted++;
+        });
+
+        return new Promise((resolve) => {
+            tx.oncomplete = () => {
+                console.log(`[DB] Successfully seeded ${inserted} historical snapshots.`);
+                resolve(true);
+            };
+            tx.onerror = () => resolve(false);
+        });
+
+    } catch (e) {
+        console.warn("[DB] Could not seed database:", e);
+        return false;
+    }
+}
 
 // Generate and Download CSV
 export const downloadCSV = async () => {
@@ -146,7 +221,7 @@ export const downloadCSV = async () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `bicing_history_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute("download", `seed_data.csv`); // Changed default name to suggest using it as seed
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();

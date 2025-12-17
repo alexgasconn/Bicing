@@ -1,3 +1,4 @@
+
 export interface NetworkResponse {
   network: {
     id: string;
@@ -28,6 +29,7 @@ export interface Station {
     ebikes?: number;
     has_ebikes?: boolean;
     online?: boolean;
+    status?: string; 
   };
 }
 
@@ -45,8 +47,6 @@ export interface FilterCriteria {
   useUserLocation?: boolean; // if true, radius is from user location
   onlyEbikes?: boolean;
 }
-
-export type HeatmapMode = 'none' | 'density' | 'electric' | 'mechanical';
 
 export enum MessageRole {
   USER = 'user',
@@ -68,10 +68,24 @@ export interface RadarPoint {
 
 export type RadarSelectionMode = 'none' | 'origin' | 'destination';
 
+export type HeatmapMode = 'none' | 'density' | 'electric' | 'mechanical' | 'slots';
+
 // Sniper (Alert) Types
 export interface SniperConfig {
     stationId: string;
     targetType: 'bikes' | 'slots'; // Wait for bikes or wait for parking
     threshold: number; // usually > 0
     stationName: string;
+}
+
+// Zone Clustering
+export interface ZoneCluster {
+    id: string;
+    lat: number;
+    lng: number;
+    stationCount: number;
+    totalBikes: number;
+    totalEbikes: number;
+    totalMechanical: number;
+    totalSlots: number;
 }

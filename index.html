@@ -8,6 +8,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Leaflet Heatmap Plugin -->
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <!-- Leaflet Rotate Plugin -->
+    <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
     <style>
       /* Custom scrollbar */
       .scrollbar-hide::-webkit-scrollbar {
@@ -48,6 +52,15 @@
       @keyframes pulse-ring {
         0% { width: 100%; height: 100%; opacity: 0.8; }
         100% { width: 300%; height: 300%; opacity: 0; }
+      }
+      
+      /* Vertical Slider for Rotation */
+      .slider-vertical {
+        writing-mode: bt-lr; /* IE */
+        -webkit-appearance: slider-vertical; /* Webkit */
+        width: 8px;
+        height: 100px;
+        padding: 0 5px;
       }
     </style>
   <script type="importmap">

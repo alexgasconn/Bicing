@@ -3,7 +3,7 @@ import { Station } from '../types';
 import { saveSnapshot } from '../services/db';
 
 const STORAGE_KEY = 'bicing_last_save_time';
-const INTERVAL_MS = 60 * 60 * 1000; // 1 Hour
+const INTERVAL_MS = 1 * 60 * 1000; // 1 Minute
 
 export const useDataRecorder = (stations: Station[]) => {
   const lastSaveRef = useRef<number>(0);
@@ -21,7 +21,7 @@ export const useDataRecorder = (stations: Station[]) => {
 
     const checkAndSave = () => {
       const now = Date.now();
-      // If never saved, or more than 1 hour passed
+      // If never saved, or more than interval passed
       if (!lastSaveRef.current || (now - lastSaveRef.current) > INTERVAL_MS) {
         saveSnapshot(stations);
         lastSaveRef.current = now;

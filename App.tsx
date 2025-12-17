@@ -7,7 +7,8 @@ import StatsModal from './components/StatsModal';
 import FilterPanel from './components/FilterPanel';
 import QuickFilters from './components/QuickFilters';
 import CommuteRadar from './components/CommuteRadar';
-import { Activity, Map as MapIcon, Crosshair } from 'lucide-react';
+import { Activity, Crosshair } from 'lucide-react';
+import { seedDatabaseFromCSV } from './services/db';
 
 // Hooks
 import { useStations } from './hooks/useStations';
@@ -22,8 +23,17 @@ const App: React.FC = () => {
   const { userLocation, locateUser } = useUserLocation();
   const { sniperConfig, setSniper, clearSniper } = useSniper(stations);
   
-  // Initialize Data Recorder (Runs automatically in background)
+  // Initialize Data Recorder
   const { forceSave } = useDataRecorder(stations);
+
+  // Initialize DB Seeding
+  useEffect(() => {
+    seedDatabaseFromCSV('/seed_data.csv').then((success) => {
+        if (success) {
+            console.log("Historical data loaded successfully.");
+        }
+    });
+  }, []);
   
   // 2. View State
   const [viewState, setViewState] = useState<MapViewState>({
@@ -45,10 +55,7 @@ const App: React.FC = () => {
   const [radarDestination, setRadarDestination] = useState<RadarPoint | null>(null);
   const [radarSelectionMode, setRadarSelectionMode] = useState<RadarSelectionMode>('none');
 
-  // 6. Layer State
-  const [showBikeLanes, setShowBikeLanes] = useState(false);
-
-  // 7. Favorites State
+  // 6. Favorites State
   const [favorites, setFavorites] = useState<string[]>(() => {
     const saved = localStorage.getItem('bicing_favorites');
     return saved ? JSON.parse(saved) : [];
@@ -56,7 +63,6 @@ const App: React.FC = () => {
 
   // --- Logic Pipelines ---
 
-  // Filter Stations using Custom Hook
   const filteredStations = useStationFilters(
       stations, 
       filterCriteria, 
@@ -65,17 +71,20 @@ const App: React.FC = () => {
       userLocation
   );
 
-  // Auto-center map when user locates
   useEffect(() => {
-      if (userLocation) {
+      const isValid = Array.isArray(userLocation) && 
+                      userLocation.length === 2 && 
+                      !isNaN(userLocation[0]) && 
+                      !isNaN(userLocation[1]);
+
+      if (isValid && userLocation) {
           setViewState({ center: userLocation, zoom: 16 });
-          // If Radar is waiting for Origin, auto-set it
           if (isRadarOpen && radarSelectionMode === 'origin') {
               setRadarOrigin({ lat: userLocation[0], lng: userLocation[1] });
               setRadarSelectionMode('destination');
           }
       }
-  }, [userLocation]); // Intentionally sparse dependency array
+  }, [userLocation]);
 
   // --- Handlers ---
 
@@ -94,6 +103,8 @@ const App: React.FC = () => {
   };
 
   const handleMapClick = (lat: number, lng: number) => {
+      if (isNaN(lat) || isNaN(lng)) return;
+
       if (radarSelectionMode === 'origin') {
           setRadarOrigin({ lat, lng });
           setRadarSelectionMode('destination');
@@ -105,7 +116,9 @@ const App: React.FC = () => {
 
   const openRadar = () => {
       setIsRadarOpen(true);
-      if (!radarOrigin && userLocation) {
+      const isValidLoc = userLocation && !isNaN(userLocation[0]) && !isNaN(userLocation[1]);
+      
+      if (!radarOrigin && isValidLoc && userLocation) {
           setRadarOrigin({ lat: userLocation[0], lng: userLocation[1] });
           setRadarSelectionMode('destination');
       } else if (!radarOrigin) {
@@ -128,7 +141,6 @@ const App: React.FC = () => {
           radarDestination={radarDestination}
           selectionMode={radarSelectionMode}
           onMapClick={handleMapClick}
-          showBikeLanes={showBikeLanes}
           onSetSniper={setSniper}
           activeSniper={sniperConfig}
         />
@@ -151,22 +163,12 @@ const App: React.FC = () => {
         {/* Action Buttons Container (Right Side) */}
         {!isRadarOpen && (
             <div className="absolute top-20 right-4 z-[1000] flex flex-col gap-3">
-                {/* Radar Trigger */}
                 <button 
                     onClick={openRadar}
                     className="bg-white p-3 rounded-full shadow-lg border border-slate-200 text-slate-700 hover:text-blue-600 transition-all active:scale-95"
                     title="Obrir Radar de Trajecte"
                 >
                     <Activity size={24} />
-                </button>
-
-                {/* Bike Lane Toggle */}
-                <button 
-                    onClick={() => setShowBikeLanes(!showBikeLanes)}
-                    className={`p-3 rounded-full shadow-lg border transition-all active:scale-95 ${showBikeLanes ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200 hover:text-emerald-600'}`}
-                    title="Mostrar Carrils Bici"
-                >
-                    <MapIcon size={24} />
                 </button>
             </div>
         )}

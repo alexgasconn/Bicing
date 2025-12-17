@@ -21,33 +21,64 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = ({ stations, mode }) => {
       const mechanical = Math.max(0, s.free_bikes - ebikes);
 
       if (mode === 'density') {
-        intensity = s.free_bikes; // Total density
+        intensity = s.free_bikes; // General bike density
       } else if (mode === 'electric') {
         intensity = ebikes;
       } else if (mode === 'mechanical') {
         intensity = mechanical;
+      } else if (mode === 'slots') {
+        intensity = s.empty_slots;
       }
       
-      // Normalize intensity slightly for better visuals (cap at a reasonable number like 20)
-      const normIntensity = Math.min(intensity / 10, 1);
+      // High Visibility Normalization
+      // Saturate faster: 4 units = Max Intensity (1.0)
+      // This ensures even stations with very few bikes appear as "hot" spots clearly
+      const normIntensity = Math.min(intensity / 4, 1.0);
       
-      // Return point only if it contributes
       if (intensity > 0) {
           return [s.latitude, s.longitude, normIntensity];
       }
       return null;
     }).filter(Boolean) as [number, number, number][];
 
-    // Configure Gradient colors
+    // Ultra High Contrast Gradients
     let gradient: Record<number, string> = { 0.4: 'blue', 0.65: 'lime', 1: 'red' };
+
     if (mode === 'electric') {
-        gradient = { 0.4: '#93c5fd', 0.7: '#3b82f6', 1: '#1e3a8a' }; // Light blue to Dark blue
+        // Neon Blue
+        gradient = { 
+            0.1: '#93c5fd', // Light Blue
+            0.4: '#3b82f6', // Blue 500
+            0.7: '#1d4ed8', // Blue 700
+            1.0: '#172554'  // Deep Navy
+        }; 
     } else if (mode === 'mechanical') {
-        gradient = { 0.4: '#fca5a5', 0.7: '#ef4444', 1: '#7f1d1d' }; // Light red to Dark red
+        // Neon Red
+        gradient = { 
+            0.1: '#fca5a5', // Light Red
+            0.4: '#ef4444', // Red 500
+            0.7: '#b91c1c', // Red 700
+            1.0: '#450a0a'  // Deep Maroon
+        }; 
+    } else if (mode === 'slots') {
+        // Dark/Grey Scale for Parking
+        gradient = { 
+            0.1: '#cbd5e1', // Slate 300
+            0.4: '#64748b', // Slate 500
+            0.7: '#334155', // Slate 700
+            1.0: '#000000'  // Pure Black
+        };
+    } else {
+        // Density (Mixed) - Hot Magma
+        gradient = { 
+            0.1: '#fcd34d', // Yellow
+            0.4: '#f97316', // Orange
+            0.7: '#ef4444', // Red
+            1.0: '#7f1d1d'  // Dark Red
+        }; 
     }
 
-    // Access global L because leaflet.heat attaches to window.L (from script tag), 
-    // not the module L (from import)
+    // Access global L because leaflet.heat attaches to window.L (from script tag)
     const GlobalL = (window as any).L;
 
     if (!GlobalL || !GlobalL.heatLayer) {
@@ -56,10 +87,11 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = ({ stations, mode }) => {
     }
 
     const heat = GlobalL.heatLayer(points, {
-        radius: 25,
-        blur: 15,
-        maxZoom: 17,
-        gradient: gradient
+        radius: 30, 
+        blur: 20,   
+        maxZoom: 17, // Matches the StationMap threshold
+        gradient: gradient,
+        minOpacity: 0.5 
     });
 
     heat.addTo(map);
