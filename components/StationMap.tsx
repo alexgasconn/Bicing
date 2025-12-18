@@ -84,29 +84,26 @@ const getIcon = (station: Station, isFavorite: boolean, isSniperTarget: boolean)
 };
 
 const createClusterIconHtml = (cluster: ZoneCluster, isLarge: boolean) => {
-    // Color Logic: Traffic light system for quick readability
     let bgClass = '';
     let border = '';
     const count = cluster.totalBikes;
 
-    // Scale thresholds if grouping is larger
-    // Large zones aggregate more stations, so thresholds should be higher for "green"
     const scale = isLarge ? 2.5 : 1; 
 
     if (count === 0) {
-         bgClass = '#64748b'; // Slate (Empty/Grey)
+         bgClass = '#64748b'; 
          border = '#475569';
     } else if (count < (10 * scale)) {
-         bgClass = '#ef4444'; // Red (Critical)
+         bgClass = '#ef4444'; 
          border = '#b91c1c';
     } else if (count < (30 * scale)) {
-         bgClass = '#f59e0b'; // Amber (Medium)
+         bgClass = '#f59e0b'; 
          border = '#b45309';
     } else if (count < (60 * scale)) {
-         bgClass = '#84cc16'; // Lime (Good)
+         bgClass = '#84cc16'; 
          border = '#4d7c0f';
     } else {
-         bgClass = '#22c55e'; // Green (Excellent)
+         bgClass = '#22c55e'; 
          border = '#15803d';
     }
 
@@ -137,7 +134,6 @@ const createClusterIconHtml = (cluster: ZoneCluster, isLarge: boolean) => {
                  <span style="font-size: ${badgeSize}px; opacity: 0.7;">|</span>
                  <span style="font-size: ${badgeSize}px; font-weight: 700; opacity: 1;">P${cluster.totalSlots}</span>
             </div>
-            ${isLarge ? '<div style="position: absolute; bottom: -18px; background: white; color: #1e293b; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">ZONA</div>' : ''}
         </div>
     `;
 };
@@ -183,6 +179,17 @@ const isValidLatLng = (coords: any): boolean => {
 const isValidCoordinate = (val: any): boolean => {
     return typeof val === 'number' && !isNaN(val);
 }
+
+// Simple deterministic hash function for tiny position jitter
+const getJitter = (key: string): [number, number] => {
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+        hash = key.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const latJitter = ((hash & 0xFF) / 255 - 0.5) * 0.0004;
+    const lngJitter = (((hash >> 8) & 0xFF) / 255 - 0.5) * 0.0004;
+    return [latJitter, lngJitter];
+};
 
 interface StationMapProps {
   stations: Station[];
@@ -261,11 +268,6 @@ const LayerController: React.FC<{
       setBounds(map.getBounds());
   }, [map]);
 
-  // --- ZOOM LEVEL LOGIC ---
-  // Zoom >= 15: Stations (Individual)
-  // Zoom 13-14: Small Clusters (Neighborhoods)
-  // Zoom < 13: Large Clusters (Districts/City)
-  
   let viewMode: 'stations' | 'clusters-small' | 'clusters-large' = 'stations';
   if (zoom < 13) viewMode = 'clusters-large';
   else if (zoom < 15) viewMode = 'clusters-small';
@@ -275,7 +277,6 @@ const LayerController: React.FC<{
     const paddedBounds = bounds ? bounds.pad(0.2) : null;
 
     if (viewMode === 'stations') {
-        // Individual Mode
         const vis = stations.filter(s => {
             if (!s || !isValidCoordinate(s.latitude) || !isValidCoordinate(s.longitude)) return false;
             if (!paddedBounds) return true;
@@ -283,17 +284,11 @@ const LayerController: React.FC<{
         });
         return { visibleStations: vis, clusters: [] };
     } else {
-        // Clustering Mode
-        // Grid Size in degrees. 
-        // 0.010 approx 1.1km (Neighborhood)
-        // 0.035 approx 3.8km (District/Large Zone)
         const gridSize = viewMode === 'clusters-small' ? 0.010 : 0.035;
-        
         const groups: Record<string, { latSum: number, lngSum: number, count: number, s: Station[] }> = {};
 
         stations.forEach(s => {
             if (!s || !isValidCoordinate(s.latitude) || !isValidCoordinate(s.longitude)) return;
-            // Key based on grid cell
             const gridX = Math.floor(s.latitude / gridSize);
             const gridY = Math.floor(s.longitude / gridSize);
             const key = `${gridX}-${gridY}`;
@@ -309,8 +304,9 @@ const LayerController: React.FC<{
 
         const zoneClusters: ZoneCluster[] = Object.entries(groups).map(([key, group]) => {
             if (group.count === 0) return null;
-            const centerLat = group.latSum / group.count;
-            const centerLng = group.lngSum / group.count;
+            const jitter = getJitter(key);
+            const centerLat = group.latSum / group.count + jitter[0];
+            const centerLng = group.lngSum / group.count + jitter[1];
             
             if (!isValidCoordinate(centerLat) || !isValidCoordinate(centerLng)) return null;
 
@@ -340,7 +336,6 @@ const LayerController: React.FC<{
 
   return (
     <>
-      {/* Clusters Layer */}
       {viewMode !== 'stations' && clusters.map(cluster => (
           <Marker
             key={cluster.id}
@@ -348,7 +343,6 @@ const LayerController: React.FC<{
             icon={getClusterIcon(cluster, viewMode === 'clusters-large')}
             eventHandlers={{
                 click: () => {
-                    // Smart Zoom: If Large -> Zoom to Medium (14). If Medium -> Zoom to Stations (16).
                     const targetZoom = viewMode === 'clusters-large' ? 14 : 16;
                     map.flyTo([cluster.lat, cluster.lng], targetZoom, { duration: 1.2 });
                 }
@@ -356,7 +350,6 @@ const LayerController: React.FC<{
           />
       ))}
 
-      {/* Stations Layer */}
       {viewMode === 'stations' && visibleStations.map((station) => {
         if (!isValidCoordinate(station.latitude) || !isValidCoordinate(station.longitude)) return null;
 
@@ -448,15 +441,13 @@ const LayerController: React.FC<{
                         </div>
                     </div>
                     
-                    {/* Prediction Component Injection */}
                     <StationPrediction station={station} />
 
-                    {/* NEW: Analytics Button */}
                     <button 
                         onClick={() => onOpenStationStats && onOpenStationStats(station)}
                         className="w-full mt-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors border border-slate-200"
                     >
-                        <BarChart3 size={12} /> Veure Històric i Patrons
+                        <BarChart3 size={12} /> Veure Tendències 24h
                     </button>
 
                     {isSniper && (
