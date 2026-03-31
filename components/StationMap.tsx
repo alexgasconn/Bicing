@@ -382,7 +382,7 @@ const LayerController: React.FC<{
                 <div className="p-3 bg-white">
                     {station.distanceToUser !== undefined && !isNaN(station.distanceToUser) && (
                         <div className="mb-2 text-xs font-bold text-blue-600 flex items-center gap-1">
-                            <Navigation size={10} /> {Math.round(station.distanceToUser)}m de tu
+                            <Navigation size={10} /> A prop teu: {Math.round(station.distanceToUser)} m
                         </div>
                     )}
                     

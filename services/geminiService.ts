@@ -97,7 +97,7 @@ export class GeminiAssistant {
       return result.text;
     } catch (error) {
       console.error("Gemini interaction error:", error);
-      return "Lo siento, hubo un error al procesar tu solicitud. Por favor intenta de nuevo.";
+      return "Hi ha hagut un error en processar la teva consulta. Torna-ho a provar.";
     }
   }
 }

@@ -49,12 +49,12 @@ const CommuteRadar: React.FC<CommuteRadarProps> = ({
     const startStation = findNearestStations(origin.lat, origin.lng, stations, 1)[0];
     const endStation = findNearestStations(destination.lat, destination.lng, stations, 1)[0];
 
-    // 4. Fake Elevation (Heuristic based on distance for demo purposes)
-    const estimatedElevationGain = Math.round(distanceKm * 15 + (Math.random() * 10)); 
+    // 4. Simple deterministic estimate to avoid random UI jumps between renders
+    const estimatedElevationGain = Math.round(Math.max(6, distanceKm * 14 + Math.abs(destination.lat - origin.lat) * 800)); 
 
     // 5. Determine Status
     let status: 'green' | 'yellow' | 'red' = 'green';
-    let message = "Trajecte viable. Bon viatge!";
+    let message = "Trajecte viable. Bon viatge.";
 
     if (!startStation || !endStation) {
         status = 'red';
@@ -112,7 +112,7 @@ const CommuteRadar: React.FC<CommuteRadarProps> = ({
                         <div className="min-w-0">
                             <div className="text-xs font-bold text-slate-500 uppercase">Origen</div>
                             <div className="text-sm font-bold text-slate-800 truncate max-w-[180px]">
-                                {origin ? `Lat: ${origin.lat.toFixed(3)}, Lng: ${origin.lng.toFixed(3)}` : 'Toca al mapa...'}
+                                {origin ? `Lat: ${origin.lat.toFixed(3)}, Lng: ${origin.lng.toFixed(3)}` : 'Toca el mapa...'}
                             </div>
                         </div>
                     </div>
@@ -131,7 +131,7 @@ const CommuteRadar: React.FC<CommuteRadarProps> = ({
                         <div className="min-w-0">
                             <div className="text-xs font-bold text-slate-500 uppercase">Destí</div>
                             <div className="text-sm font-bold text-slate-800 truncate max-w-[180px]">
-                                {destination ? `Lat: ${destination.lat.toFixed(3)}, Lng: ${destination.lng.toFixed(3)}` : 'Toca al mapa...'}
+                                {destination ? `Lat: ${destination.lat.toFixed(3)}, Lng: ${destination.lng.toFixed(3)}` : 'Toca el mapa...'}
                             </div>
                         </div>
                     </div>
@@ -185,7 +185,7 @@ const CommuteRadar: React.FC<CommuteRadarProps> = ({
                 </div>
             ) : (
                 <div className="p-8 text-center text-slate-400 text-sm pb-12">
-                    Selecciona els dos punts al mapa per calcular la ruta i disponibilitat.
+                    Selecciona dos punts del mapa per calcular la ruta i comprovar la disponibilitat.
                 </div>
             )}
         </div>

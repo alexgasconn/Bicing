@@ -23,9 +23,23 @@ export const useStations = (refreshIntervalMs: number = 60000) => {
   }, []);
 
   useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, refreshIntervalMs);
-    return () => clearInterval(interval);
+    void loadData();
+
+    const refreshIfVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void loadData();
+      }
+    };
+
+    const interval = window.setInterval(refreshIfVisible, refreshIntervalMs);
+    document.addEventListener('visibilitychange', refreshIfVisible);
+    window.addEventListener('focus', refreshIfVisible);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshIfVisible);
+      window.removeEventListener('focus', refreshIfVisible);
+    };
   }, [loadData, refreshIntervalMs]);
 
   return { stations, loading, error, lastUpdated, refresh: loadData };

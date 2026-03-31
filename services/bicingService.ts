@@ -3,7 +3,12 @@ import { NetworkResponse, Station } from '../types';
 
 export const fetchStations = async (): Promise<Station[]> => {
   try {
-    const response = await fetch(API_URL);
+    const response = await fetch(API_URL, {
+      headers: {
+        Accept: 'application/json'
+      },
+      cache: 'no-store'
+    });
     if (!response.ok) {
       throw new Error(`Failed to fetch stations: ${response.statusText}`);
     }
@@ -45,9 +50,16 @@ export const findNearestStations = (
   return stations
     .map((station) => ({
       ...station,
-      distance: Math.sqrt(
-        Math.pow(station.latitude - lat, 2) + Math.pow(station.longitude - lng, 2)
-      ),
+      distance: (() => {
+        const radius = 6371e3;
+        const lat1 = lat * Math.PI / 180;
+        const lat2 = station.latitude * Math.PI / 180;
+        const deltaLat = (station.latitude - lat) * Math.PI / 180;
+        const deltaLng = (station.longitude - lng) * Math.PI / 180;
+        const arc = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+          Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
+        return radius * (2 * Math.atan2(Math.sqrt(arc), Math.sqrt(1 - arc)));
+      })(),
     }))
     .sort((a, b) => a.distance - b.distance)
     .slice(0, limit);

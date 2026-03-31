@@ -31,26 +31,24 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
 
   const toggleLocationUsage = (use: boolean) => {
       onCriteriaChange({ ...criteria, useUserLocation: use });
-  }
+    };
 
   return (
-    <div className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/20 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
-        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+        <div className="fixed inset-0 z-[5000] flex items-end md:items-center justify-center bg-black/30 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-t-[28px] md:rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col h-[88dvh] md:h-auto md:max-h-[90vh] safe-area-bottom">
+                <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 safe-area-top">
             <h2 className="font-bold text-slate-800 flex items-center gap-2">
-                <Filter size={18} /> Filtres d'Estacions
+                                <Filter size={18} /> Filtres d'estacions
             </h2>
             <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full text-slate-500">
                 <X size={20} />
             </button>
         </div>
 
-        <div className="p-5 space-y-6 overflow-y-auto max-h-[70vh]">
+                <div className="p-5 space-y-6 overflow-y-auto flex-1">
             
-            {/* Filtros Numéricos */}
             <section className="space-y-4">
                 
-                {/* Huecos */}
                 <div>
                     <div className="flex justify-between text-sm mb-1.5">
                         <label className="font-medium text-slate-700 flex items-center gap-2"><ParkingCircle size={14} /> Mín. Espais</label>
@@ -64,7 +62,6 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
                     />
                 </div>
 
-                {/* Eléctricas */}
                 <div>
                     <div className="flex justify-between text-sm mb-1.5">
                         <label className="font-medium text-blue-700 flex items-center gap-2"><Zap size={14} /> Mín. Elèctriques</label>
@@ -78,7 +75,6 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
                     />
                 </div>
 
-                 {/* Mecánicas */}
                  <div>
                     <div className="flex justify-between text-sm mb-1.5">
                         <label className="font-medium text-red-700 flex items-center gap-2"><Bike size={14} /> Mín. Mecàniques</label>
@@ -94,16 +90,15 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
 
                 <hr className="border-slate-100 my-4" />
 
-                {/* Radio */}
                 <div>
                     <div className="flex justify-between text-sm mb-1.5">
-                        <label className="font-medium text-slate-700 flex items-center gap-2"><Navigation size={14} /> Distància Màxima</label>
+                        <label className="font-medium text-slate-700 flex items-center gap-2"><Navigation size={14} /> Distància màxima</label>
                         <span className="font-bold text-slate-900">{criteria.radius ? `${criteria.radius}m` : 'Tot BCN'}</span>
                     </div>
                     
                     {!userLocation && criteria.useUserLocation && (
                         <div className="mb-2 text-xs text-amber-600 bg-amber-50 p-2 rounded">
-                            ⚠️ Ubicació no detectada. Usant el centre del mapa.
+                            Ubicació no detectada. Fem servir el centre del mapa.
                         </div>
                     )}
 
@@ -126,10 +121,10 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
                         type="range" min="0" max="2000" step="100" 
                         value={criteria.radius || 0}
                         onChange={(e) => updateCriteria('radius', parseInt(e.target.value))}
-                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-red-600"
                     />
                     <p className="text-[10px] text-slate-400 mt-1">
-                        {criteria.radius ? `Mostrant estacions a menys de ${criteria.radius}m.` : 'Mostra tota la ciutat.'}
+                        {criteria.radius ? `Mostrant estacions a menys de ${criteria.radius} m.` : 'Mostrant tota la ciutat.'}
                     </p>
                 </div>
             </section>

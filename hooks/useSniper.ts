@@ -46,10 +46,10 @@ export const useSniper = (stations: Station[]) => {
 
             if (sniperConfig.targetType === 'bikes' && targetStation.free_bikes > sniperConfig.threshold) {
                 triggered = true;
-                message = `🚴 ¡Bici trobada a ${targetStation.name}! (${targetStation.free_bikes} disponibles)`;
+                message = `🚴 Bici trobada a ${targetStation.name} (${targetStation.free_bikes} disponibles)`;
             } else if (sniperConfig.targetType === 'slots' && targetStation.empty_slots > sniperConfig.threshold) {
                 triggered = true;
-                message = `🅿️ ¡Lloc lliure a ${targetStation.name}! (${targetStation.empty_slots} espais)`;
+                message = `🅿️ Lloc lliure a ${targetStation.name} (${targetStation.empty_slots} espais)`;
             }
 
             if (triggered) {
